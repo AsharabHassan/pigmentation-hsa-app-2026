@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Harley Street Aesthetics brand tokens (from the live clinic site).
+   Dark-luxury, Harley-Street premium: near-black canvas + metallic gold +
+   warm off-white. Playfair Display serif headings / Montserrat sans.
+
+   NOTE: the original token *names* (peach / cream / sage) are kept so existing
+   component classes resolve — only their VALUES are remapped to the HSA
+   dark-gold palette. `peach*` = the gold accent family; `cream*` = the dark
+   surface family; `heading`/`body` = light text on dark.
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Gold accent family (was "peach") */
+  --color-peach: #d4af37;
+  --color-peach-light: #e7c668;
+  --color-peach-deep: #b8902a;
+  --color-gold: #d4af37;
+  --color-gold-soft: #f4b400;
+
+  /* Dark surface family (was "cream") */
+  --color-cream: #070707;
+  --color-cream-deep: #16130f;
+
+  /* Secondary cool accent */
+  --color-sage: #8fa3a0;
+  --color-sage-deep: #6f8584;
+
+  /* Light text on dark */
+  --color-heading: #f5f1e6;
+  --color-body: #c4bdb0;
+
+  /* Near-black, used for dark surfaces, overlays and button text */
+  --color-ink: #050505;
+
+  --font-serif: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-montserrat), Helvetica, Arial, sans-serif;
+
+  --radius-xl2: 1.75rem;
+
+  --shadow-soft: 0 22px 60px -28px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 60px -10px rgba(212, 175, 55, 0.5);
+
+  --ease-cinematic: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-body);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  color: var(--color-heading);
+  letter-spacing: -0.01em;
+}
+
+/* Gold metallic text — used for the wordmark and key headline accents */
+.text-gold-gradient {
+  background: linear-gradient(120deg, #b8902a 0%, #e7c668 45%, #d4af37 70%, #b8902a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Subtle vignette helper used by cinematic sections */
+.bg-grain {
+  background-image: radial-gradient(
+    120% 120% at 50% 0%,
+    rgba(7, 7, 7, 0) 40%,
+    rgba(212, 175, 55, 0.08) 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
