@@ -8,6 +8,7 @@ import {
   type NormalizedPoint,
 } from "@/components/scan/useFaceLandmarker";
 import { FaceMeshOverlay } from "@/components/scan/FaceMeshOverlay";
+import { useDevelopmentScanRecorder } from "@/components/scan/useDevelopmentScanRecorder";
 import { requestAnalysis } from "@/lib/api-client";
 
 const STATUS = [
@@ -44,6 +45,12 @@ export function ScanScreen() {
   const dataUrl = imageBase64
     ? `data:${imageMediaType};base64,${imageBase64}`
     : null;
+
+  const { captureRequested, captureComplete } = useDevelopmentScanRecorder({
+    imageRef: imgRef,
+    imageLoaded: imgLoaded,
+    landmarks,
+  });
 
   // Detect once the still and the model are both ready (drives the mesh overlay,
   // and is kept in the store so the result screen can crop the user's areas).
@@ -86,12 +93,25 @@ export function ScanScreen() {
   // Advance to the lead gate only once the analysis result is in the store AND the
   // loader has run its minimum duration. If the API is slow, the loader holds.
   useEffect(() => {
-    if (!result || !minElapsed) return;
+    if (
+      !result ||
+      !minElapsed ||
+      (captureRequested && !captureComplete)
+    ) {
+      return;
+    }
     // If the photo didn't clearly show the whole face in even light, route to a
     // retake prompt instead of giving a read we can't stand behind.
     if (result.usedPhoto && !result.framingAdequate) goToStep("retake");
     else completeScan();
-  }, [result, minElapsed, completeScan, goToStep]);
+  }, [
+    result,
+    minElapsed,
+    captureRequested,
+    captureComplete,
+    completeScan,
+    goToStep,
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 py-10">

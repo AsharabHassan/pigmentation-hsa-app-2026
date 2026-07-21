@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Upload, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConsentCheckbox } from "@/components/compliance/ConsentCheckbox";
@@ -9,6 +9,9 @@ import { CameraCapture } from "@/components/scan/CameraCapture";
 import { PhotoGuide } from "@/components/scan/PhotoGuide";
 import { useWizard, type MediaType } from "@/store/wizard-store";
 import { fileToDownscaledImage } from "@/lib/image";
+
+const DEMO_CAPTURE_ASSET =
+  "/assets/hsa-cinematic/source/pigmentation-model-pexels-24735911.jpg";
 
 export function ConsentCaptureScreen() {
   const imageConsent = useWizard((s) => s.imageConsent);
@@ -19,6 +22,45 @@ export function ConsentCaptureScreen() {
   const [mode, setMode] = useState<"choose" | "camera">("choose");
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const demoCaptureStartedRef = useRef(false);
+
+  // Development-only capture helper: after the normal consent step, load the
+  // checked-in demo portrait into the actual file input and dispatch its native
+  // change event. This deliberately reuses handleUpload unchanged, so image
+  // normalisation, wizard state and the real scan follow the production path.
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV !== "development" ||
+      !imageConsent ||
+      demoCaptureStartedRef.current ||
+      new URLSearchParams(window.location.search).get("demoCapture") !== "1"
+    ) {
+      return;
+    }
+
+    const input = fileRef.current;
+    if (!input) return;
+    demoCaptureStartedRef.current = true;
+
+    void (async () => {
+      try {
+        const response = await fetch(DEMO_CAPTURE_ASSET, { cache: "no-store" });
+        if (!response.ok) throw new Error("demo-photo-fetch-failed");
+
+        const blob = await response.blob();
+        const file = new File([blob], "hsa-demo-pigmentation.jpg", {
+          type: blob.type || "image/jpeg",
+        });
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch {
+        demoCaptureStartedRef.current = false;
+        setError("Sorry, we couldn't load the development capture photo.");
+      }
+    })();
+  }, [imageConsent]);
 
   function handleCapture(base64: string, mediaType: MediaType) {
     setImage(base64, mediaType);

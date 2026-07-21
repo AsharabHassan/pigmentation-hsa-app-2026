@@ -1,12 +1,58 @@
 [
-  {"text":"The mirror can show a mark.","startMs":280,"endMs":2680,"timestampMs":null,"confidence":null},
-  {"text":"It cannot show the whole pattern.","startMs":2860,"endMs":5920,"timestampMs":null,"confidence":null},
-  {"text":"That is why HSA created the sixty-second Skin-Tone Map.","startMs":6180,"endMs":10280,"timestampMs":null,"confidence":null},
-  {"text":"One clear photo becomes a personalised, six-zone view of visible skin-tone variation.","startMs":10520,"endMs":16480,"timestampMs":null,"confidence":null},
-  {"text":"Not a diagnosis.","startMs":16900,"endMs":18900,"timestampMs":null,"confidence":null},
-  {"text":"A clearer starting point for a conversation with an HSA practitioner.","startMs":19100,"endMs":23800,"timestampMs":null,"confidence":null},
-  {"text":"After clinical assessment, the team can discuss a plan shaped around the individual.","startMs":24100,"endMs":29800,"timestampMs":null,"confidence":null},
-  {"text":"Better decisions begin with seeing the whole picture.","startMs":30100,"endMs":34000,"timestampMs":null,"confidence":null},
-  {"text":"Create your free Skin-Tone Map.","startMs":34200,"endMs":36500,"timestampMs":null,"confidence":null},
-  {"text":"HSA. See first. Choose better.","startMs":36800,"endMs":39800,"timestampMs":null,"confidence":null}
+  {
+    "text": "Pigmentation isn't one mark. It's a pattern — and it can appear differently across the face.",
+    "startMs": 0,
+    "endMs": 4580,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Upload a clear selfie to HSA. Receive a personalised pigmentation report with an on-face map.",
+    "startMs": 4615,
+    "endMs": 10432,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Then book a free online consultation. Our doctor-led team reviews your report and creates a bespoke plan using HSA's three-step protocol.",
+    "startMs": 10571,
+    "endMs": 17874,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "VirtueRF Pulsed Mode targets visible pigment.",
+    "startMs": 18478,
+    "endMs": 21566,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Exosome Therapy supports recovery and renewal.",
+    "startMs": 21717,
+    "endMs": 24213,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "And Mesotherapy delivers tailored brightening ingredients where they're needed.",
+    "startMs": 24248,
+    "endMs": 27405,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Together, the protocol is designed to help fade visible dark spots and support a brighter, more even-looking tone.",
+    "startMs": 27440,
+    "endMs": 32560,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "HSA. Upload your selfie. Get your report. Book your free consultation.",
+    "startMs": 32641,
+    "endMs": 37750,
+    "timestampMs": null,
+    "confidence": null
+  }
 ]
