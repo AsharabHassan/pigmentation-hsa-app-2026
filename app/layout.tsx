@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Montserrat } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "@/lib/constants";
+import MetaPixel from "@/components/analytics/MetaPixel";
 
 const playfair = Playfair_Display({
   weight: ["400", "500", "600", "700"],
@@ -43,7 +44,10 @@ export default function RootLayout({
       lang="en-GB"
       className={`${playfair.variable} ${montserrat.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <MetaPixel />
+      </body>
     </html>
   );
 }

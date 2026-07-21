@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildGhlPayload } from "@/lib/ghl";
-import type { AnalyzeResult, Lead } from "@/lib/types";
+import type { AnalyzeResult, Lead, MetaTracking } from "@/lib/types";
 
 const lead: Lead = {
   firstName: "Jane",
@@ -67,6 +67,37 @@ describe("buildGhlPayload", () => {
       "t",
     );
     expect(declined.marketingConsent).toBe(false);
+  });
+
+  it("forwards the Meta conversion envelope for CRM-side dedup", () => {
+    const meta: MetaTracking = {
+      pixelId: "823507040655170",
+      eventName: "Lead",
+      eventId: "b3f1c2d4-0000-4000-8000-abcdefabcdef",
+      eventTime: 1780000000,
+      actionSource: "website",
+      fbp: "fb.1.1780000000000.1234567890",
+      fbc: "fb.1.1780000000000.IwAR0abc",
+      fbclid: "IwAR0abc",
+      eventSourceUrl: "https://pigmentation.harleystreetaesthetic.co.uk/",
+      clientUserAgent: "Mozilla/5.0",
+      clientIpAddress: "203.0.113.7",
+    };
+    const p = buildGhlPayload(lead, result, "t", meta);
+    expect(p.metaPixelId).toBe("823507040655170");
+    expect(p.metaEventName).toBe("Lead");
+    expect(p.metaEventId).toBe("b3f1c2d4-0000-4000-8000-abcdefabcdef");
+    expect(p.metaEventTime).toBe(1780000000);
+    expect(p.metaFbp).toBe("fb.1.1780000000000.1234567890");
+    expect(p.metaFbc).toBe("fb.1.1780000000000.IwAR0abc");
+    expect(p.metaClientIpAddress).toBe("203.0.113.7");
+  });
+
+  it("omits Meta keys entirely when no envelope is supplied", () => {
+    const p = buildGhlPayload(lead, result, "t");
+    expect(p.metaEventId).toBeUndefined();
+    // Absent — not null — so a re-delivery can't blank a stored CRM field.
+    expect(JSON.parse(JSON.stringify(p))).not.toHaveProperty("metaEventId");
   });
 
   it("serializes hard flags for consultation-routed leads", () => {

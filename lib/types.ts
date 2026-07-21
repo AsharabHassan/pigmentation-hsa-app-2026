@@ -97,8 +97,33 @@ export interface PhotoAssessment {
   framingAdequate: boolean;
 }
 
+/**
+ * Meta conversion identifiers for one event, minted in the browser and
+ * forwarded to the CRM so the server-side copy can be deduplicated against the
+ * pixel's. `clientUserAgent` / `clientIpAddress` are filled in server-side from
+ * the request headers — the browser can't read its own IP.
+ */
+export interface MetaTracking {
+  pixelId: string;
+  eventName: string;
+  eventId: string;
+  /** Unix seconds — Meta rejects events older than 7 days. */
+  eventTime: number;
+  actionSource: "website";
+  /** Meta browser id cookie (`_fbp`). */
+  fbp: string | null;
+  /** Meta click id cookie (`_fbc`), synthesized from `fbclid` when absent. */
+  fbc: string | null;
+  fbclid: string | null;
+  eventSourceUrl: string | null;
+  clientUserAgent?: string | null;
+  clientIpAddress?: string | null;
+}
+
 /** Request body for POST /api/lead. */
 export interface LeadRequest {
   lead: Lead;
   result: AnalyzeResult;
+  /** Meta conversion envelope for the `Lead` event fired alongside this call. */
+  meta?: MetaTracking;
 }

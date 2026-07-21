@@ -1,4 +1,4 @@
-import type { AnalyzeResult, Lead } from "./types";
+import type { AnalyzeResult, Lead, MetaTracking } from "./types";
 import { BUCKET_META } from "./constants";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,12 +25,27 @@ export interface GhlPayload {
   headline: string;
   marketingConsent: boolean;
   submittedAt?: string;
+  // ── Meta conversion tracking (flat, so GHL can map each to a custom field) ──
+  /** The pixel this conversion belongs to. */
+  metaPixelId?: string;
+  metaEventName?: string;
+  /** Dedup key: the CRM's server-side event must reuse this id verbatim. */
+  metaEventId?: string;
+  metaEventTime?: number;
+  metaActionSource?: string;
+  metaEventSourceUrl?: string;
+  metaFbp?: string;
+  metaFbc?: string;
+  metaFbclid?: string;
+  metaClientUserAgent?: string;
+  metaClientIpAddress?: string;
 }
 
 export function buildGhlPayload(
   lead: Lead,
   result: AnalyzeResult,
   submittedAt?: string,
+  meta?: MetaTracking,
 ): GhlPayload {
   return {
     firstName: lead.firstName,
@@ -50,5 +65,18 @@ export function buildGhlPayload(
     headline: result.narrative.headline,
     marketingConsent: lead.marketingConsent,
     submittedAt,
+    // `?? undefined` rather than null: absent keys are dropped by JSON.stringify,
+    // so GHL never overwrites a stored value with an empty one on re-delivery.
+    metaPixelId: meta?.pixelId,
+    metaEventName: meta?.eventName,
+    metaEventId: meta?.eventId,
+    metaEventTime: meta?.eventTime,
+    metaActionSource: meta?.actionSource,
+    metaEventSourceUrl: meta?.eventSourceUrl ?? undefined,
+    metaFbp: meta?.fbp ?? undefined,
+    metaFbc: meta?.fbc ?? undefined,
+    metaFbclid: meta?.fbclid ?? undefined,
+    metaClientUserAgent: meta?.clientUserAgent ?? undefined,
+    metaClientIpAddress: meta?.clientIpAddress ?? undefined,
   };
 }

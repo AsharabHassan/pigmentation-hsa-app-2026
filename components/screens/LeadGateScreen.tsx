@@ -12,6 +12,7 @@ import {
   submitLead,
   submitReportToGhl,
 } from "@/lib/api-client";
+import { createMetaEvent, trackPixel } from "@/lib/meta-pixel";
 import type { Lead } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -72,7 +73,20 @@ export function LeadGateScreen() {
       });
       setResult(result);
     }
-    await submitLead({ lead, result });
+    // Meta: the qualified lead is captured. One envelope drives both sides —
+    // the browser pixel and the CRM webhook quote the same event id, so Meta
+    // dedupes them into a single conversion.
+    const metaEvent = createMetaEvent("Lead");
+    await submitLead({ lead, result, meta: metaEvent });
+    trackPixel(
+      "Lead",
+      {
+        content_name: "Pigmentation Analysis",
+        content_category: result.bucket,
+        marketing_consent: lead.marketingConsent,
+      },
+      metaEvent.eventId,
+    );
     // Generate the report PDF and deliver it to GoHighLevel (upload + attach to
     // the contact + email the client). Fire-and-forget so the reveal isn't
     // delayed; it no-ops if the GHL integration env isn't configured.

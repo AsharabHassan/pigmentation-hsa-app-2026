@@ -6,6 +6,13 @@ export const runtime = "nodejs";
 
 const RETRIES = 3;
 
+/** First hop in `x-forwarded-for` is the real client on Vercel. */
+function clientIp(request: Request): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim() || null;
+  return request.headers.get("x-real-ip");
+}
+
 async function deliver(url: string, payload: unknown): Promise<boolean> {
   for (let attempt = 0; attempt < RETRIES; attempt++) {
     try {
@@ -39,10 +46,23 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: "missing fields" }, { status: 400 });
   }
 
+  // Meta's server-side match quality leans on the client's UA and IP, neither of
+  // which the browser can report about itself — read them off this request. The
+  // event id itself is the browser's, so the CRM's Conversions API copy dedupes
+  // against the pixel event instead of double-counting the conversion.
+  const meta = body.meta
+    ? {
+        ...body.meta,
+        clientUserAgent: request.headers.get("user-agent"),
+        clientIpAddress: clientIp(request),
+      }
+    : undefined;
+
   const payload = buildGhlPayload(
     body.lead,
     body.result,
     new Date().toISOString(),
+    meta,
   );
 
   let webhook: string | undefined;
