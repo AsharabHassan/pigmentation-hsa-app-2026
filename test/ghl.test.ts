@@ -3,6 +3,7 @@ import {
   buildGhlPayload,
   canonicalEventSourceUrl,
   createServerMetaConversion,
+  fbclidFromFbc,
   META_DATASET_ID,
 } from "@/lib/ghl";
 import {
@@ -104,6 +105,7 @@ describe("buildGhlPayload", () => {
         "https://pigmentation.harleystreetaesthetic.co.uk/results",
       metaFbp: "fb.1.1780000000000.1234567890",
       metaFbc: "fb.1.1780000000000.IwAR0abc",
+      metaFbclid: "IwAR0abc",
       metaFirstName: "Jane",
       metaLastName: "Doe",
       metaEmail: "jane@example.com",
@@ -111,7 +113,6 @@ describe("buildGhlPayload", () => {
       metaClientUserAgent: "Mozilla/5.0",
       metaClientIpAddress: "203.0.113.7",
     });
-    expect(payload).not.toHaveProperty("metaFbclid");
     expect(Object.keys(payload).filter((key) => key.startsWith("meta"))).not.toEqual(
       expect.arrayContaining([
         "metaSuitabilityScore",
@@ -137,6 +138,32 @@ describe("buildGhlPayload", () => {
 });
 
 describe("Meta server event safety", () => {
+  it("derives FBCLID only from Meta's validated _fbc cookie format", () => {
+    expect(fbclidFromFbc("fb.1.1780000000000.IwAR0abc_123-xyz")).toBe(
+      "IwAR0abc_123-xyz",
+    );
+    expect(fbclidFromFbc("IwAR0abc_123-xyz")).toBeUndefined();
+    expect(fbclidFromFbc("fb.1.not-a-timestamp.IwAR0abc")).toBeUndefined();
+    expect(fbclidFromFbc("fb.1.1780000000000.click.id")).toBeUndefined();
+  });
+
+  it("does not expose an FBCLID when the consented fbc is malformed", () => {
+    const meta = createServerMetaConversion({
+      lead,
+      attribution: {
+        fbp: null,
+        fbc: "untrusted-raw-click-id",
+        eventSourceUrl: null,
+      },
+    });
+    const payload = buildGhlPayload(
+      lead,
+      result,
+      buildOptions({ metaTrackingConsent: true, meta }),
+    );
+    expect(payload).not.toHaveProperty("metaFbclid");
+  });
+
   it("pins conversion controls and canonicalises to production origin/path", () => {
     const meta = createServerMetaConversion({
       lead,
@@ -188,6 +215,14 @@ describe("lead request validation", () => {
     const parsed = leadRequestSchema.safeParse({
       ...valid,
       attribution: { ...valid.attribution, eventName: "Purchase" },
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects a standalone raw fbclid supplied by the browser", () => {
+    const parsed = leadRequestSchema.safeParse({
+      ...valid,
+      attribution: { ...valid.attribution, fbclid: "client-controlled" },
     });
     expect(parsed.success).toBe(false);
   });

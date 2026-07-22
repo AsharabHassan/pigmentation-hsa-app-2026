@@ -118,6 +118,8 @@ export interface ServerMetaConversion {
   eventSourceUrl: string;
   fbp?: string;
   fbc?: string;
+  /** Raw Meta click identifier, derived server-side from a validated `_fbc`. */
+  fbclid?: string;
   firstName: string;
   lastName: string;
   email: string;

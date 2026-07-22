@@ -18,6 +18,7 @@ This app is a sibling of the HSA Endomax Lift analyzer, sharing the same dark-go
 - Claude returns **zone-level severities only** — all face geometry/crops come from on-device MediaPipe landmarks. The model is never asked for pixel coordinates.
 - The photo is securely sent to the configured AI provider in a single `/api/analyze` request. This app does not persist the original photo to a database or file system and does not log it; the browser keeps it in memory while the visitor views their result. If Claude is unavailable, a deterministic on-brand fallback routes to a consultation, so a user always gets a result.
 - The face-containing PDF is **not** uploaded to GHL by default. Full-report delivery requires explicit report-storage consent, `NEXT_PUBLIC_GHL_FULL_REPORT_STORAGE_ENABLED=true` to offer that choice, and server-side `GHL_FULL_REPORT_STORAGE_ENABLED=true` to permit delivery. Keep both flags off until a tested external workflow deletes the GHL media file, note, custom-field link and any copies within 30 days. The purge workflow is not implemented by this app.
+- For the consent-gated HighLevel Funnel Event action, `metaFbclid` is derived server-side from a valid `_fbc` cookie. The browser cannot submit a separate raw `fbclid`, and the field is omitted when advertising consent is absent or the cookie is malformed.
 - Makeup and obscured zones (beard, fringe, glasses, shadow) are detected and honestly caveated rather than guessed at.
 
 ## Stack

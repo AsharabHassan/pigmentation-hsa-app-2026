@@ -42,6 +42,7 @@ export interface GhlPayload {
   metaEventSourceUrl?: string;
   metaFbp?: string;
   metaFbc?: string;
+  metaFbclid?: string;
   metaFirstName?: string;
   metaLastName?: string;
   metaEmail?: string;
@@ -80,6 +81,20 @@ function optionalValue(value: string | null | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+/**
+ * Extract the raw click id from Meta's `_fbc` cookie format.
+ *
+ * The browser never submits a standalone fbclid. Keeping this extraction on
+ * the server prevents callers from supplying a separate, mismatched value.
+ */
+export function fbclidFromFbc(fbc: string | null | undefined): string | undefined {
+  const value = optionalValue(fbc);
+  if (!value) return undefined;
+
+  const match = /^fb\.\d{1,3}\.\d{13}\.([A-Za-z0-9_-]{1,220})$/.exec(value);
+  return match?.[1];
+}
+
 /** Create the server-controlled Meta event after consent has been validated. */
 export function createServerMetaConversion(options: {
   lead: Lead;
@@ -89,6 +104,9 @@ export function createServerMetaConversion(options: {
   eventId?: string;
   eventTime?: number;
 }): ServerMetaConversion {
+  const fbc = optionalValue(options.attribution?.fbc);
+  const fbclid = fbclidFromFbc(fbc);
+
   return {
     datasetId: META_DATASET_ID,
     pixelId: META_DATASET_ID,
@@ -100,7 +118,8 @@ export function createServerMetaConversion(options: {
       options.attribution?.eventSourceUrl,
     ),
     fbp: optionalValue(options.attribution?.fbp),
-    fbc: optionalValue(options.attribution?.fbc),
+    fbc,
+    ...(fbclid ? { fbclid } : {}),
     firstName: options.lead.firstName,
     lastName: options.lead.lastName,
     email: options.lead.email,
@@ -128,6 +147,7 @@ export function buildGhlPayload(
         metaEventSourceUrl: meta.eventSourceUrl,
         metaFbp: meta.fbp,
         metaFbc: meta.fbc,
+        ...(meta.fbclid ? { metaFbclid: meta.fbclid } : {}),
         metaFirstName: meta.firstName,
         metaLastName: meta.lastName,
         metaEmail: meta.email,
