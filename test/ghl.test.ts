@@ -1,6 +1,17 @@
-import { describe, it, expect } from "vitest";
-import { buildGhlPayload } from "@/lib/ghl";
-import type { AnalyzeResult, Lead, MetaTracking } from "@/lib/types";
+import { describe, expect, it, vi } from "vitest";
+import {
+  buildGhlPayload,
+  canonicalEventSourceUrl,
+  createServerMetaConversion,
+  META_DATASET_ID,
+} from "@/lib/ghl";
+import {
+  clientIp,
+  deliverWebhook,
+  isProductionMetaRequest,
+  leadRequestSchema,
+} from "@/app/api/lead/route";
+import type { AnalyzeResult, Lead } from "@/lib/types";
 
 const lead: Lead = {
   firstName: "Jane",
@@ -25,89 +36,273 @@ const result: AnalyzeResult = {
   narrativeSource: "claude",
   narrative: {
     headline: "Your skin shows exactly what this treatment targets",
-    narrative: "…",
+    narrative: "Personalised result",
     observedAreas: ["cheeks", "forehead"],
-    encouragement: "…",
+    encouragement: "Book a consultation",
   },
 };
 
+function buildOptions(overrides: Record<string, unknown> = {}) {
+  return {
+    submittedAt: "2026-06-04T10:00:00.000Z",
+    metaTrackingConsent: false,
+    reportStorageConsent: false,
+    ...overrides,
+  };
+}
+
 describe("buildGhlPayload", () => {
-  it("maps contact fields", () => {
-    const p = buildGhlPayload(lead, result, "2026-06-04T10:00:00.000Z");
-    expect(p.firstName).toBe("Jane");
-    expect(p.lastName).toBe("Doe");
-    expect(p.name).toBe("Jane Doe");
-    expect(p.email).toBe("jane@example.com");
-    expect(p.phone).toBe("07700900123");
-  });
-
-  it("tags the lead with the bucket for AI-agent routing", () => {
-    const p = buildGhlPayload(lead, result, "2026-06-04T10:00:00.000Z");
-    expect(p.tags).toContain("pigmentation-analyzer");
-    expect(p.tags).toContain("pigmentation-great");
-  });
-
-  it("carries the suitability fields", () => {
-    const p = buildGhlPayload(lead, result, "2026-06-04T10:00:00.000Z");
-    expect(p.suitabilityBucket).toBe("great");
-    expect(p.suitabilityScore).toBe(88);
-    expect(p.suitabilityLabel).toBe("Strong candidate");
-    expect(p.usedPhoto).toBe(true);
-    expect(p.observedAreas).toEqual(["cheeks", "forehead"]);
-    expect(p.submittedAt).toBe("2026-06-04T10:00:00.000Z");
-  });
-
-  it("records marketing consent as its own boolean, separate from the lead", () => {
-    const granted = buildGhlPayload(lead, result, "t");
-    expect(granted.marketingConsent).toBe(true);
-
-    const declined = buildGhlPayload(
-      { ...lead, marketingConsent: false },
-      result,
-      "t",
+  it("maps CRM contact, result and separate consent fields", () => {
+    const payload = buildGhlPayload(lead, result, buildOptions());
+    expect(payload).toMatchObject({
+      firstName: "Jane",
+      lastName: "Doe",
+      name: "Jane Doe",
+      email: "jane@example.com",
+      phone: "07700900123",
+      suitabilityBucket: "great",
+      suitabilityLabel: "Strong candidate",
+      suitabilityScore: 88,
+      marketingConsent: true,
+      metaTrackingConsent: false,
+      reportStorageConsent: false,
+      submittedAt: "2026-06-04T10:00:00.000Z",
+    });
+    expect(payload.tags).toEqual(
+      expect.arrayContaining(["pigmentation-analyzer", "pigmentation-great"]),
     );
-    expect(declined.marketingConsent).toBe(false);
   });
 
-  it("forwards the Meta conversion envelope for CRM-side dedup", () => {
-    const meta: MetaTracking = {
-      pixelId: "823507040655170",
-      eventName: "Lead",
-      eventId: "b3f1c2d4-0000-4000-8000-abcdefabcdef",
-      eventTime: 1780000000,
-      actionSource: "website",
-      fbp: "fb.1.1780000000000.1234567890",
-      fbc: "fb.1.1780000000000.IwAR0abc",
-      fbclid: "IwAR0abc",
-      eventSourceUrl: "https://pigmentation.harleystreetaesthetic.co.uk/",
+  it("adds only the allow-listed server event when Meta consent is true", () => {
+    const meta = createServerMetaConversion({
+      lead,
+      attribution: {
+        fbp: "fb.1.1780000000000.1234567890",
+        fbc: "fb.1.1780000000000.IwAR0abc",
+        eventSourceUrl:
+          "https://evil.example/results?email=jane@example.com#private",
+      },
       clientUserAgent: "Mozilla/5.0",
       clientIpAddress: "203.0.113.7",
-    };
-    const p = buildGhlPayload(lead, result, "t", meta);
-    expect(p.metaPixelId).toBe("823507040655170");
-    expect(p.metaEventName).toBe("Lead");
-    expect(p.metaEventId).toBe("b3f1c2d4-0000-4000-8000-abcdefabcdef");
-    expect(p.metaEventTime).toBe(1780000000);
-    expect(p.metaFbp).toBe("fb.1.1780000000000.1234567890");
-    expect(p.metaFbc).toBe("fb.1.1780000000000.IwAR0abc");
-    expect(p.metaClientIpAddress).toBe("203.0.113.7");
-  });
-
-  it("omits Meta keys entirely when no envelope is supplied", () => {
-    const p = buildGhlPayload(lead, result, "t");
-    expect(p.metaEventId).toBeUndefined();
-    // Absent — not null — so a re-delivery can't blank a stored CRM field.
-    expect(JSON.parse(JSON.stringify(p))).not.toHaveProperty("metaEventId");
-  });
-
-  it("serializes hard flags for consultation-routed leads", () => {
-    const p = buildGhlPayload(lead, {
-      ...result,
-      bucket: "consultation",
-      hardFlags: ["pregnancy"],
+      eventId: "11111111-1111-4111-8111-111111111111",
+      eventTime: 1_780_000_000,
     });
-    expect(p.suitabilityBucket).toBe("consultation");
-    expect(p.hardFlags).toContain("pregnancy");
-    expect(p.tags).toContain("pigmentation-consultation");
+    const payload = buildGhlPayload(
+      lead,
+      result,
+      buildOptions({ metaTrackingConsent: true, meta }),
+    );
+
+    expect(payload).toMatchObject({
+      metaDatasetId: META_DATASET_ID,
+      metaPixelId: META_DATASET_ID,
+      metaEventName: "Lead",
+      metaEventId: "11111111-1111-4111-8111-111111111111",
+      metaEventTime: 1_780_000_000,
+      metaActionSource: "website",
+      metaEventSourceUrl:
+        "https://pigmentation.harleystreetaesthetic.co.uk/results",
+      metaFbp: "fb.1.1780000000000.1234567890",
+      metaFbc: "fb.1.1780000000000.IwAR0abc",
+      metaFirstName: "Jane",
+      metaLastName: "Doe",
+      metaEmail: "jane@example.com",
+      metaPhone: "07700900123",
+      metaClientUserAgent: "Mozilla/5.0",
+      metaClientIpAddress: "203.0.113.7",
+    });
+    expect(payload).not.toHaveProperty("metaFbclid");
+    expect(Object.keys(payload).filter((key) => key.startsWith("meta"))).not.toEqual(
+      expect.arrayContaining([
+        "metaSuitabilityScore",
+        "metaObservedAreas",
+        "metaReport",
+        "metaMarketingConsent",
+      ]),
+    );
+  });
+
+  it("omits every Meta event field when tracking consent is false", () => {
+    const meta = createServerMetaConversion({ lead, eventId: "server-id" });
+    const payload = buildGhlPayload(
+      lead,
+      result,
+      buildOptions({ metaTrackingConsent: false, meta }),
+    );
+    const eventKeys = Object.keys(payload).filter(
+      (key) => key.startsWith("meta") && key !== "metaTrackingConsent",
+    );
+    expect(eventKeys).toEqual([]);
+  });
+});
+
+describe("Meta server event safety", () => {
+  it("pins conversion controls and canonicalises to production origin/path", () => {
+    const meta = createServerMetaConversion({
+      lead,
+      attribution: {
+        fbp: null,
+        fbc: null,
+        eventSourceUrl: "https://attacker.example//report?secret=1#face",
+      },
+      eventId: "server-generated-id",
+      eventTime: 123,
+    });
+    expect(meta).toMatchObject({
+      datasetId: "1849043682301992",
+      pixelId: "1849043682301992",
+      eventName: "Lead",
+      eventId: "server-generated-id",
+      eventTime: 123,
+      actionSource: "website",
+      eventSourceUrl:
+        "https://pigmentation.harleystreetaesthetic.co.uk/report",
+    });
+  });
+
+  it("falls back to the production root for an invalid source URL", () => {
+    expect(canonicalEventSourceUrl("http://[")).toBe(
+      "https://pigmentation.harleystreetaesthetic.co.uk/",
+    );
+  });
+});
+
+describe("lead request validation", () => {
+  const valid = {
+    lead,
+    result,
+    metaTrackingConsent: true,
+    reportStorageConsent: false,
+    attribution: {
+      fbp: null,
+      fbc: null,
+      eventSourceUrl: "https://pigmentation.harleystreetaesthetic.co.uk/",
+    },
+  };
+
+  it("accepts the explicit consent and attribution shape", () => {
+    expect(leadRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects client-controlled conversion identifiers", () => {
+    const parsed = leadRequestSchema.safeParse({
+      ...valid,
+      attribution: { ...valid.attribution, eventName: "Purchase" },
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("production Meta request gate", () => {
+  it("accepts only the same-origin production lead endpoint", () => {
+    const productionRequest = new Request(
+      "https://pigmentation.harleystreetaesthetic.co.uk/api/lead",
+      {
+        method: "POST",
+        headers: {
+          origin: "https://pigmentation.harleystreetaesthetic.co.uk",
+          "sec-fetch-site": "same-origin",
+        },
+      },
+    );
+    expect(isProductionMetaRequest(productionRequest)).toBe(true);
+  });
+
+  it("rejects previews, cross-site callers and missing browser origins", () => {
+    expect(
+      isProductionMetaRequest(
+        new Request("https://preview-project.vercel.app/api/lead", {
+          headers: {
+            origin: "https://preview-project.vercel.app",
+            "sec-fetch-site": "same-origin",
+          },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isProductionMetaRequest(
+        new Request(
+          "https://pigmentation.harleystreetaesthetic.co.uk/api/lead",
+          {
+            headers: {
+              origin: "https://attacker.example",
+              "sec-fetch-site": "cross-site",
+            },
+          },
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      isProductionMetaRequest(
+        new Request(
+          "https://pigmentation.harleystreetaesthetic.co.uk/api/lead",
+        ),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("webhook delivery", () => {
+  it("uses the first valid forwarded IP and rejects invalid input", () => {
+    expect(
+      clientIp(
+        new Request("https://example.test", {
+          headers: { "x-forwarded-for": "203.0.113.7, 10.0.0.1" },
+        }),
+      ),
+    ).toBe("203.0.113.7");
+    expect(
+      clientIp(
+        new Request("https://example.test", {
+          headers: { "x-forwarded-for": "not-an-ip" },
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("retries a failed webhook up to three times", async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 503 }));
+    const wait = vi.fn(async () => undefined);
+    const outcome = await deliverWebhook("https://example.test/hook", {}, {
+      fetchImpl: fetchImpl as typeof fetch,
+      wait,
+    });
+    expect(outcome).toEqual({ delivered: false, attempts: 3 });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(wait).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops retrying after a successful attempt", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const outcome = await deliverWebhook("https://example.test/hook", {}, {
+      fetchImpl: fetchImpl as typeof fetch,
+      wait: async () => undefined,
+    });
+    expect(outcome).toEqual({ delivered: true, attempts: 2 });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts timed-out attempts before retrying", async () => {
+    const signals: AbortSignal[] = [];
+    const fetchImpl = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal;
+          if (!signal) return reject(new Error("missing abort signal"));
+          signals.push(signal);
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        }),
+    );
+    const outcome = await deliverWebhook("https://example.test/hook", {}, {
+      fetchImpl: fetchImpl as typeof fetch,
+      timeoutMs: 1,
+      wait: async () => undefined,
+    });
+    expect(outcome).toEqual({ delivered: false, attempts: 3 });
+    expect(signals).toHaveLength(3);
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
   });
 });

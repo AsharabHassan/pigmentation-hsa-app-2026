@@ -1,19 +1,17 @@
-import type { MetaTracking } from "./types";
+import type { ClientMetaAttribution } from "./types";
+import {
+  hasMetaTrackingConsent,
+  isExactProductionHost,
+} from "./meta-consent";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Meta (Facebook) Pixel — Harley Street Aesthetics.
-// The ID is hard-coded on purpose: this app ships to a single clinic property,
-// so the pixel must fire identically in dev, preview and production without
-// depending on env wiring. An env override is still honoured if one is set.
-//
-// Every conversion also travels to the CRM (GoHighLevel) carrying the SAME
-// event id the browser pixel used. That is what lets Meta deduplicate the
-// browser event against the CRM's server-side (Conversions API) copy instead of
-// double-counting it — dedup is keyed on event_name + event_id.
-// ─────────────────────────────────────────────────────────────────────────────
+const HSA_PIGMENTATION_PIXEL_ID = "1849043682301992";
 
+// This single-clinic app must never fall back to an unrelated data source. A
+// stale Vercel value is ignored until it is corrected during deployment.
 export const META_PIXEL_ID =
-  process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "823507040655170";
+  process.env.NEXT_PUBLIC_META_PIXEL_ID === HSA_PIGMENTATION_PIXEL_ID
+    ? process.env.NEXT_PUBLIC_META_PIXEL_ID
+    : HSA_PIGMENTATION_PIXEL_ID;
 
 type FbqFn = (...args: unknown[]) => void;
 
@@ -21,18 +19,10 @@ declare global {
   interface Window {
     fbq?: FbqFn;
     _fbq?: FbqFn;
+    __hsaMetaPixelInitialized?: boolean;
+    __hsaMetaPageViewTracked?: boolean;
   }
 }
-
-/** Unique id shared by the browser event and its server-side twin. */
-export function newEventId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  // Older Safari / insecure origins: good enough for a dedup key.
-  return `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(
@@ -41,63 +31,88 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function readFbclid(): string | null {
-  if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("fbclid");
+/** Return a campaign-safe URL with no query parameters or fragment. */
+export function getCanonicalPageUrl(url: string): string | null {
+  try {
+    const canonical = new URL(url);
+    canonical.search = "";
+    canonical.hash = "";
+    return canonical.toString();
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Meta's click/browser identifiers. `_fbp` and `_fbc` are set by the pixel
- * itself; when an ad click lands before the pixel has written `_fbc` we
- * synthesize it from the `fbclid` query param in Meta's documented format
- * (`fb.<subdomainIndex>.<timestamp>.<fbclid>`), so attribution isn't lost.
+ * Build the only browser-owned fields accepted by the lead endpoint.
+ * No attribution leaves the browser without consent or from a preview host.
  */
-export function getMetaAttribution() {
-  const fbclid = readFbclid();
-  const fbc = readCookie("_fbc") ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : null);
+export function getMetaAttribution(): ClientMetaAttribution | undefined {
+  if (typeof window === "undefined" || !hasMetaTrackingConsent()) {
+    return undefined;
+  }
+
+  const fbclid = new URLSearchParams(window.location.search).get("fbclid");
+  const fbc =
+    readCookie("_fbc") ??
+    (fbclid ? `fb.1.${Date.now()}.${fbclid}` : null);
+
   return {
     fbp: readCookie("_fbp"),
     fbc,
-    fbclid,
-    eventSourceUrl:
-      typeof window === "undefined" ? null : window.location.href,
+    eventSourceUrl: getCanonicalPageUrl(window.location.href),
   };
 }
 
-/**
- * Mint the tracking envelope for one conversion: the pixel id, a fresh event
- * id, and the click identifiers. Pass the same object to `trackPixel` and to
- * the CRM webhook so both sides describe one event, not two.
- */
-export function createMetaEvent(eventName: string): MetaTracking {
-  return {
-    pixelId: META_PIXEL_ID,
-    eventName,
-    eventId: newEventId(),
-    eventTime: Math.floor(Date.now() / 1000),
-    actionSource: "website",
-    ...getMetaAttribution(),
-  };
+/** Queue the one permitted browser event after consent and host checks pass. */
+export function initializeMetaPixel(): void {
+  if (
+    typeof window === "undefined" ||
+    typeof window.fbq !== "function" ||
+    !hasMetaTrackingConsent() ||
+    !isExactProductionHost()
+  ) {
+    return;
+  }
+
+  // Re-grant on every accepted state transition. This is idempotent and is
+  // required when a visitor rejects after accepting, then later opts back in.
+  window.fbq("consent", "grant");
+
+  if (!window.__hsaMetaPixelInitialized) {
+    window.fbq("init", META_PIXEL_ID);
+    window.__hsaMetaPixelInitialized = true;
+  }
+
+  if (!window.__hsaMetaPageViewTracked) {
+    window.fbq("track", "PageView");
+    window.__hsaMetaPageViewTracked = true;
+  }
 }
 
-/** Fire a standard Meta event (Lead, CompleteRegistration, Schedule, …). */
-export function trackPixel(
-  event: string,
-  params?: Record<string, unknown>,
-  eventId?: string,
-) {
-  if (typeof window === "undefined" || typeof window.fbq !== "function") return;
-  if (eventId) window.fbq("track", event, params, { eventID: eventId });
-  else window.fbq("track", event, params);
-}
+/** Revoke Meta consent and remove the first-party identifiers we can access. */
+export function revokeMetaPixel(): void {
+  if (typeof window === "undefined") return;
 
-/** Fire a custom (non-standard) Meta event. */
-export function trackPixelCustom(
-  event: string,
-  params?: Record<string, unknown>,
-  eventId?: string,
-) {
-  if (typeof window === "undefined" || typeof window.fbq !== "function") return;
-  if (eventId) window.fbq("trackCustom", event, params, { eventID: eventId });
-  else window.fbq("trackCustom", event, params);
+  if (typeof window.fbq === "function") {
+    window.fbq("consent", "revoke");
+  }
+
+  if (typeof document !== "undefined") {
+    for (const cookie of ["_fbp", "_fbc"]) {
+      document.cookie = `${cookie}=; Max-Age=0; Path=/; SameSite=Lax`;
+
+      // Remove legacy domain-scoped identifiers created before consent was
+      // introduced. These domains are deliberately explicit for this app;
+      // never attempt broad public-suffix deletion.
+      for (const domain of [
+        "pigmentation.harleystreetaesthetic.co.uk",
+        ".pigmentation.harleystreetaesthetic.co.uk",
+        "harleystreetaesthetic.co.uk",
+        ".harleystreetaesthetic.co.uk",
+      ]) {
+        document.cookie = `${cookie}=; Max-Age=0; Path=/; Domain=${domain}; SameSite=Lax`;
+      }
+    }
+  }
 }

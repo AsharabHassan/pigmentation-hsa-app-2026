@@ -36,6 +36,7 @@ export async function submitLead(body: LeadRequest): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      keepalive: true,
     });
   } catch {
     /* swallowed: server-side retry + logging owns reliability */
@@ -65,7 +66,12 @@ export async function submitReportToGhl(opts: {
   imageBase64: string | null;
   imageMediaType: string;
   landmarks: NormalizedPoint[] | null;
+  reportStorageConsent: boolean;
 }): Promise<void> {
+  const storageEnabled =
+    process.env.NEXT_PUBLIC_GHL_FULL_REPORT_STORAGE_ENABLED === "true";
+  if (!storageEnabled || !opts.reportStorageConsent) return;
+
   try {
     const { generateReportPdf } = await import("./report");
     const blob = await generateReportPdf({
@@ -84,6 +90,7 @@ export async function submitReportToGhl(opts: {
         suitabilityLabel: BUCKET_META[opts.result.bucket].label,
         score: opts.result.score,
         pdfBase64,
+        reportStorageConsent: opts.reportStorageConsent,
       }),
     });
   } catch {

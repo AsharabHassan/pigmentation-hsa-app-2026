@@ -100,10 +100,11 @@ export function ConsentCaptureScreen() {
         A quick photo to begin
       </h2>
       <p className="mt-3 text-body">
-        Our AI gently maps the tone across your face to tailor your result.
-        Your photo is analysed once and then{" "}
-        <span className="font-semibold text-heading">deleted immediately</span>{" "}
-        — never stored.
+        Our AI gently maps the tone across your face to tailor your result. Your
+        photo is securely sent to our AI provider for this one-time analysis and
+        remains in this browser while you view your result. This app does not
+        save the original photo. If you later choose to store a face-containing
+        report in our clinic CRM, we&rsquo;ll ask for separate consent.
       </p>
 
       {mode === "camera" ? (
@@ -123,8 +124,9 @@ export function ConsentCaptureScreen() {
           <ConsentCheckbox checked={imageConsent} onChange={setImageConsent}>
             <span>
               <Lock size={13} className="mr-1 inline text-sage-deep" />I consent
-              to my photo being analysed to personalise my result. I understand
-              it is processed once and not stored.
+              to my photo being securely sent to the AI provider for this
+              one-time analysis. I understand that storing a face-containing
+              report in the clinic CRM requires a separate choice later.
             </span>
           </ConsentCheckbox>
 

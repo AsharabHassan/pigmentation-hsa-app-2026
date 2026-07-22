@@ -176,7 +176,7 @@ export function ScanScreen() {
       </div>
 
       <p className="mt-2 text-xs text-body/55">
-        On-device · your photo never leaves this step
+        Secure one-time AI analysis · not saved by this app
       </p>
     </div>
   );

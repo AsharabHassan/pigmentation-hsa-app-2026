@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Sparkles, Info, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWizard } from "@/store/wizard-store";
@@ -13,7 +13,6 @@ import { Testimonials } from "@/components/result/Testimonials";
 import { BookingCTA } from "@/components/result/BookingCTA";
 import { DisclaimerBanner } from "@/components/compliance/DisclaimerBanner";
 import { BUCKET_META, TREATMENT_CONCERNS } from "@/lib/constants";
-import { newEventId, trackPixel } from "@/lib/meta-pixel";
 import { EASE } from "@/lib/motion";
 
 const reveal = (delay: number) => ({
@@ -29,23 +28,6 @@ export function ResultScreen() {
   const landmarks = useWizard((s) => s.landmarks);
   const lead = useWizard((s) => s.lead);
   const [downloading, setDownloading] = useState(false);
-
-  // Meta: the analysis reveal is the completed funnel. Guarded by a ref so
-  // re-renders (and the reveal animation) can't fire it more than once.
-  const registrationTracked = useRef(false);
-  useEffect(() => {
-    if (!result || registrationTracked.current) return;
-    registrationTracked.current = true;
-    trackPixel(
-      "CompleteRegistration",
-      {
-        content_name: "Pigmentation Analysis Result",
-        status: result.bucket,
-        value: result.score,
-      },
-      newEventId(),
-    );
-  }, [result]);
 
   if (!result) return null;
 

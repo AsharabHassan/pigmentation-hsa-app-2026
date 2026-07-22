@@ -51,10 +51,21 @@ export const TRUST_MARKERS = [
 ] as const;
 
 /** Booking + site URLs (overridable via public env at deploy). */
-export const BOOKING_URL =
+const CONFIGURED_BOOKING_URL =
   process.env.NEXT_PUBLIC_BOOKING_URL ??
-  process.env.NEXT_PUBLIC_PHOREST_BOOKING_URL ??
-  "https://harleystreetaesthetic.co.uk/london/book";
+  process.env.NEXT_PUBLIC_PHOREST_BOOKING_URL;
+const WORKING_BOOKING_URL =
+  "https://harleystreetaesthetic.co.uk/london/contact/";
+
+// Protect production from the retired route if a stale Vercel value survives
+// one deployment. Other explicitly configured booking providers still work.
+export const BOOKING_URL =
+  !CONFIGURED_BOOKING_URL ||
+  /^https:\/\/harleystreetaesthetic\.co\.uk\/london\/book\/?$/i.test(
+    CONFIGURED_BOOKING_URL,
+  )
+    ? WORKING_BOOKING_URL
+    : CONFIGURED_BOOKING_URL;
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??

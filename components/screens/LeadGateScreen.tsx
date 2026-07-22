@@ -12,10 +12,13 @@ import {
   submitLead,
   submitReportToGhl,
 } from "@/lib/api-client";
-import { createMetaEvent, trackPixel } from "@/lib/meta-pixel";
+import { getMetaAttribution } from "@/lib/meta-pixel";
+import { hasMetaTrackingConsent } from "@/lib/meta-consent";
 import type { Lead } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const FULL_REPORT_STORAGE_ENABLED =
+  process.env.NEXT_PUBLIC_GHL_FULL_REPORT_STORAGE_ENABLED === "true";
 
 export function LeadGateScreen() {
   const imageBase64 = useWizard((s) => s.imageBase64);
@@ -32,6 +35,7 @@ export function LeadGateScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [marketing, setMarketing] = useState(false);
+  const [reportStorage, setReportStorage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -73,30 +77,32 @@ export function LeadGateScreen() {
       });
       setResult(result);
     }
-    // Meta: the qualified lead is captured. One envelope drives both sides —
-    // the browser pixel and the CRM webhook quote the same event id, so Meta
-    // dedupes them into a single conversion.
-    const metaEvent = createMetaEvent("Lead");
-    await submitLead({ lead, result, meta: metaEvent });
-    trackPixel(
-      "Lead",
-      {
-        content_name: "Pigmentation Analysis",
-        content_category: result.bucket,
-        marketing_consent: lead.marketingConsent,
-      },
-      metaEvent.eventId,
-    );
-    // Generate the report PDF and deliver it to GoHighLevel (upload + attach to
-    // the contact + email the client). Fire-and-forget so the reveal isn't
-    // delayed; it no-ops if the GHL integration env isn't configured.
-    void submitReportToGhl({
-      result,
+    const reportStorageConsent =
+      FULL_REPORT_STORAGE_ENABLED && reportStorage;
+
+    // The browser sends no conversion event. GHL is the sole source of the
+    // server-side Lead and receives Meta fields only after advertising consent.
+    void submitLead({
       lead,
-      imageBase64,
-      imageMediaType,
-      landmarks,
+      result,
+      metaTrackingConsent: hasMetaTrackingConsent(),
+      reportStorageConsent,
+      attribution: getMetaAttribution(),
     });
+
+    // A face-containing PDF may enter GHL only when both deployment flags and
+    // the visitor's separate report-storage choice are true. Otherwise the CRM
+    // receives the text result summary above and the full PDF remains local.
+    if (reportStorageConsent) {
+      void submitReportToGhl({
+        result,
+        lead,
+        imageBase64,
+        imageMediaType,
+        landmarks,
+        reportStorageConsent,
+      });
+    }
     reveal();
   }
 
@@ -115,8 +121,9 @@ export function LeadGateScreen() {
           Where shall we send your result?
         </h2>
         <p className="mt-2 text-sm text-body">
-          See your personalised pigmentation analysis and we&rsquo;ll keep a
-          copy for your free online consultation.
+          See your personalised pigmentation analysis. We&rsquo;ll securely add
+          a written summary to your contact record so our doctor-led team can
+          review it for your free online consultation.
         </p>
 
         <form onSubmit={submit} className="mt-6 space-y-4">
@@ -148,6 +155,23 @@ export function LeadGateScreen() {
             onChange={(e) => setPhone(e.target.value)}
             autoComplete="tel"
           />
+
+          {FULL_REPORT_STORAGE_ENABLED ? (
+            <ConsentCheckbox
+              checked={reportStorage}
+              onChange={setReportStorage}
+            >
+              I consent to Harley Street Aesthetics securely storing my full
+              report, including my photo, for clinical review for up to 30
+              days. Optional &mdash; I&rsquo;ll still see my result if I decline.
+            </ConsentCheckbox>
+          ) : (
+            <p className="rounded-2xl border border-sage/20 bg-sage/[0.06] px-4 py-3 text-xs leading-relaxed text-body/75">
+              Your written result summary is added to your contact record. Your
+              selfie and full PDF are not stored in the clinic CRM; you can
+              download your copy after the reveal.
+            </p>
+          )}
 
           <ConsentCheckbox checked={marketing} onChange={setMarketing}>
             I&rsquo;m happy for Harley Street Aesthetics to contact me about my
