@@ -14,6 +14,7 @@ import {
 } from "@/lib/api-client";
 import { getMetaAttribution } from "@/lib/meta-pixel";
 import { hasMetaTrackingConsent } from "@/lib/meta-consent";
+import { FULL_REPORT_RETENTION_DAYS } from "@/lib/privacy";
 import type { Lead } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,6 +25,7 @@ export function LeadGateScreen() {
   const imageBase64 = useWizard((s) => s.imageBase64);
   const imageMediaType = useWizard((s) => s.imageMediaType);
   const imageConsent = useWizard((s) => s.imageConsent);
+  const imageConsentAt = useWizard((s) => s.imageConsentAt);
   const landmarks = useWizard((s) => s.landmarks);
   const storedResult = useWizard((s) => s.result);
   const setLead = useWizard((s) => s.setLead);
@@ -35,7 +37,6 @@ export function LeadGateScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [marketing, setMarketing] = useState(false);
-  const [reportStorage, setReportStorage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -78,21 +79,24 @@ export function LeadGateScreen() {
       setResult(result);
     }
     const reportStorageConsent =
-      FULL_REPORT_STORAGE_ENABLED && reportStorage;
+      FULL_REPORT_STORAGE_ENABLED && imageConsent;
 
     // The browser sends no conversion event. GHL is the sole source of the
     // server-side Lead and receives Meta fields only after advertising consent.
     void submitLead({
       lead,
       result,
+      imageProcessingConsent: imageConsent,
+      imageProcessingConsentAt:
+        imageConsentAt ?? new Date().toISOString(),
       metaTrackingConsent: hasMetaTrackingConsent(),
       reportStorageConsent,
       attribution: getMetaAttribution(),
     });
 
     // A face-containing PDF may enter GHL only when both deployment flags and
-    // the visitor's separate report-storage choice are true. Otherwise the CRM
-    // receives the text result summary above and the full PDF remains local.
+    // the explicit upload action are true. Otherwise the CRM receives the text
+    // result summary above and the full PDF remains local.
     if (reportStorageConsent) {
       void submitReportToGhl({
         result,
@@ -156,26 +160,26 @@ export function LeadGateScreen() {
             autoComplete="tel"
           />
 
-          {FULL_REPORT_STORAGE_ENABLED ? (
-            <ConsentCheckbox
-              checked={reportStorage}
-              onChange={setReportStorage}
-            >
-              I consent to Harley Street Aesthetics securely storing my full
-              report, including my photo, for clinical review for up to 30
-              days. Optional &mdash; I&rsquo;ll still see my result if I decline.
-            </ConsentCheckbox>
-          ) : (
-            <p className="rounded-2xl border border-sage/20 bg-sage/[0.06] px-4 py-3 text-xs leading-relaxed text-body/75">
-              Your written result summary is added to your contact record. Your
-              selfie and full PDF are not stored in the clinic CRM; you can
-              download your copy after the reveal.
-            </p>
-          )}
+          <p className="rounded-2xl border border-sage/20 bg-sage/[0.06] px-4 py-3 text-xs leading-relaxed text-body/75">
+            {FULL_REPORT_STORAGE_ENABLED ? (
+              <>
+                A derived PDF containing your photo may be sent to the clinic CRM
+                for review. HSA&rsquo;s configured deletion deadline is{" "}
+                {FULL_REPORT_RETENTION_DAYS} days; you can also download your own
+                copy after the reveal.
+              </>
+            ) : (
+              <>
+                Your written result summary is added to your contact record.
+                Your selfie and full PDF are not stored in the clinic CRM; you
+                can download your copy after the reveal.
+              </>
+            )}
+          </p>
 
           <ConsentCheckbox checked={marketing} onChange={setMarketing}>
-            I&rsquo;m happy for Harley Street Aesthetics to contact me about my
-            result and relevant offers. Optional — you&rsquo;ll see your result
+            Send me future skincare news and treatment offers by email or SMS.
+            Optional &mdash; your requested result and clinic record are created
             either way.
           </ConsentCheckbox>
 

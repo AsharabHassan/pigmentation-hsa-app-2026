@@ -29,6 +29,7 @@ export interface DeliverInput {
   subject: string;
   emailHtml: string;
   noteBody: string; // may contain "{url}" placeholder
+  deleteAfter: string;
 }
 
 export interface DeliverResult {
@@ -38,6 +39,7 @@ export interface DeliverResult {
   contactId?: string;
   emailed?: boolean;
   noted?: boolean;
+  deleteAfter?: string;
   error?: string;
 }
 
@@ -89,8 +91,22 @@ export async function deliverReportToGhl(
       email: input.email,
       phone: input.phone,
     };
+    const deleteAfterFieldKey = (
+      process.env.GHL_REPORT_DELETE_AFTER_FIELD_KEY ||
+      "facial_app_report_delete_after"
+    ).trim();
+    const customFields: Array<{ key: string; field_value: string }> = [];
     if (fieldKey) {
-      upsertBody.customFields = [{ key: fieldKey, field_value: fileUrl }];
+      customFields.push({ key: fieldKey, field_value: fileUrl });
+    }
+    if (deleteAfterFieldKey) {
+      customFields.push({
+        key: deleteAfterFieldKey,
+        field_value: input.deleteAfter,
+      });
+    }
+    if (customFields.length > 0) {
+      upsertBody.customFields = customFields;
     }
     const us = await fetch(`${BASE}/contacts/upsert`, {
       method: "POST",
@@ -137,7 +153,14 @@ export async function deliverReportToGhl(
       /* non-fatal — the report is still on the contact via the note + media */
     }
 
-    return { ok: true, fileUrl, contactId, emailed, noted };
+    return {
+      ok: true,
+      fileUrl,
+      contactId,
+      emailed,
+      noted,
+      deleteAfter: input.deleteAfter,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "ghl-error" };
   }

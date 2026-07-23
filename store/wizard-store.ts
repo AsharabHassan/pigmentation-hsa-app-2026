@@ -17,6 +17,7 @@ export type MediaType = "image/jpeg" | "image/png" | "image/webp";
 interface WizardState {
   step: Step;
   imageConsent: boolean;
+  imageConsentAt: string | null;
   imageBase64: string | null;
   imageMediaType: MediaType;
   landmarks: NormalizedPoint[] | null;
@@ -45,6 +46,7 @@ interface WizardState {
 const initial = {
   step: "hero" as Step,
   imageConsent: false,
+  imageConsentAt: null as string | null,
   imageBase64: null as string | null,
   imageMediaType: "image/jpeg" as MediaType,
   landmarks: null as NormalizedPoint[] | null,
@@ -58,7 +60,13 @@ export const useWizard = create<WizardState>((set, get) => ({
 
   start: () => set({ step: "consent" }),
 
-  setImageConsent: (v) => set({ imageConsent: v }),
+  setImageConsent: (v) =>
+    set((state) => ({
+      imageConsent: v,
+      imageConsentAt: v
+        ? (state.imageConsentAt ?? new Date().toISOString())
+        : null,
+    })),
 
   setImage: (base64, mediaType) =>
     set({ imageBase64: base64, imageMediaType: mediaType }),

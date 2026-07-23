@@ -9,6 +9,7 @@ import {
 import {
   clientIp,
   deliverWebhook,
+  isFullReportStorageAllowed,
   isProductionMetaRequest,
   leadRequestSchema,
 } from "@/app/api/lead/route";
@@ -46,6 +47,8 @@ const result: AnalyzeResult = {
 function buildOptions(overrides: Record<string, unknown> = {}) {
   return {
     submittedAt: "2026-06-04T10:00:00.000Z",
+    imageProcessingConsent: true,
+    imageProcessingConsentAt: "2026-06-04T09:55:00.000Z",
     metaTrackingConsent: false,
     reportStorageConsent: false,
     ...overrides,
@@ -65,13 +68,41 @@ describe("buildGhlPayload", () => {
       suitabilityLabel: "Strong candidate",
       suitabilityScore: 88,
       marketingConsent: true,
+      imageProcessingConsent: true,
+      imageProcessingConsentAt: "2026-06-04T09:55:00.000Z",
+      imageProcessingConsentRecordedAt: "2026-06-04T10:00:00.000Z",
+      privacyNoticeVersion: "2026-07-24",
       metaTrackingConsent: false,
       reportStorageConsent: false,
       submittedAt: "2026-06-04T10:00:00.000Z",
     });
     expect(payload.tags).toEqual(
-      expect.arrayContaining(["pigmentation-analyzer", "pigmentation-great"]),
+      expect.arrayContaining([
+        "pigmentation-analyzer",
+        "hsa-pigmentation-lead",
+        "hsa-source-pigmentation-app",
+        "pigmentation-great",
+        "hsa-marketing-opt-in",
+        "hsa-meta-consent-declined",
+      ]),
     );
+  });
+
+  it("adds a server-generated 15-day deadline only for a stored full report", () => {
+    const stored = buildGhlPayload(
+      lead,
+      result,
+      buildOptions({ reportStorageConsent: true }),
+    );
+    expect(stored).toMatchObject({
+      reportStorageConsent: true,
+      reportRetentionDays: 15,
+      reportDeleteAfter: "2026-06-19T10:00:00.000Z",
+    });
+
+    const summaryOnly = buildGhlPayload(lead, result, buildOptions());
+    expect(summaryOnly).not.toHaveProperty("reportDeleteAfter");
+    expect(summaryOnly).not.toHaveProperty("reportRetentionDays");
   });
 
   it("adds only the allow-listed server event when Meta consent is true", () => {
@@ -198,6 +229,8 @@ describe("lead request validation", () => {
   const valid = {
     lead,
     result,
+    imageProcessingConsent: true,
+    imageProcessingConsentAt: "2026-07-24T12:00:00.000Z",
     metaTrackingConsent: true,
     reportStorageConsent: false,
     attribution: {
@@ -209,6 +242,36 @@ describe("lead request validation", () => {
 
   it("accepts the explicit consent and attribution shape", () => {
     expect(leadRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts a legacy checkbox client that predates the audit fields", () => {
+    const {
+      imageProcessingConsent,
+      imageProcessingConsentAt,
+      ...legacy
+    } = valid;
+    expect(imageProcessingConsent).toBe(true);
+    expect(imageProcessingConsentAt).toBeTruthy();
+    expect(leadRequestSchema.safeParse(legacy).success).toBe(true);
+  });
+
+  it("rejects half-current consent audit payloads", () => {
+    const withoutTime = { ...valid };
+    delete (withoutTime as Partial<typeof valid>).imageProcessingConsentAt;
+    expect(leadRequestSchema.safeParse(withoutTime).success).toBe(false);
+
+    const withoutConsent = { ...valid };
+    delete (withoutConsent as Partial<typeof valid>).imageProcessingConsent;
+    expect(leadRequestSchema.safeParse(withoutConsent).success).toBe(false);
+  });
+
+  it("rejects lead delivery when the explicit analysis statement is absent", () => {
+    expect(
+      leadRequestSchema.safeParse({
+        ...valid,
+        imageProcessingConsent: false,
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects client-controlled conversion identifiers", () => {
@@ -225,6 +288,18 @@ describe("lead request validation", () => {
       attribution: { ...valid.attribution, fbclid: "client-controlled" },
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("full-report storage gate", () => {
+  it("requires both the client request and the server feature flag", () => {
+    vi.stubEnv("GHL_FULL_REPORT_STORAGE_ENABLED", "false");
+    expect(isFullReportStorageAllowed(true)).toBe(false);
+
+    vi.stubEnv("GHL_FULL_REPORT_STORAGE_ENABLED", "true");
+    expect(isFullReportStorageAllowed(false)).toBe(false);
+    expect(isFullReportStorageAllowed(true)).toBe(true);
+    vi.unstubAllEnvs();
   });
 });
 

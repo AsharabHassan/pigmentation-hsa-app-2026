@@ -12,6 +12,7 @@ const DELIVERY_ATTEMPTS = 3;
 const WEBHOOK_TIMEOUT_MS = 5_000;
 const PRODUCTION_ORIGIN =
   "https://pigmentation.harleystreetaesthetic.co.uk";
+const LEGACY_PRIVACY_NOTICE_VERSION = "legacy-checkbox-v1";
 
 const shortText = z.string().trim().min(1).max(200);
 const zoneSchema = z.enum([
@@ -78,11 +79,29 @@ export const leadRequestSchema = z
   .object({
     lead: leadSchema,
     result: resultSchema,
+    // Optional only for a short migration window so an already-open version of
+    // the previous checkbox-based client does not lose a submitted lead.
+    imageProcessingConsent: z.literal(true).optional(),
+    imageProcessingConsentAt: z.string().datetime().optional(),
     metaTrackingConsent: z.boolean(),
     reportStorageConsent: z.boolean(),
     attribution: attributionSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    const hasConsent = value.imageProcessingConsent !== undefined;
+    const hasConsentTime = value.imageProcessingConsentAt !== undefined;
+    if (hasConsent !== hasConsentTime) {
+      context.addIssue({
+        code: "custom",
+        path: hasConsent
+          ? ["imageProcessingConsentAt"]
+          : ["imageProcessingConsent"],
+        message:
+          "image processing consent and its action time must be supplied together",
+      });
+    }
+  });
 
 /** First x-forwarded-for hop is the client address on Vercel. */
 export function clientIp(request: Request): string | null {
@@ -120,6 +139,13 @@ export function isProductionMetaRequest(request: Request): boolean {
 export interface DeliveryResult {
   delivered: boolean;
   attempts: number;
+}
+
+export function isFullReportStorageAllowed(requested: boolean): boolean {
+  return (
+    requested &&
+    process.env.GHL_FULL_REPORT_STORAGE_ENABLED === "true"
+  );
 }
 
 export async function deliverWebhook(
@@ -179,8 +205,13 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const body = parsed.data;
+  const submittedAt = new Date().toISOString();
+  const legacyCheckboxClient = body.imageProcessingConsent === undefined;
   const metaTrackingAllowed =
     body.metaTrackingConsent && isProductionMetaRequest(request);
+  const reportStorageAllowed = isFullReportStorageAllowed(
+    body.reportStorageConsent,
+  );
   const meta = metaTrackingAllowed
     ? createServerMetaConversion({
         lead: body.lead,
@@ -190,9 +221,15 @@ export async function POST(request: Request): Promise<Response> {
       })
     : undefined;
   const payload = buildGhlPayload(body.lead, body.result, {
-    submittedAt: new Date().toISOString(),
+    submittedAt,
+    imageProcessingConsent: true,
+    imageProcessingConsentAt:
+      body.imageProcessingConsentAt ?? submittedAt,
+    privacyNoticeVersion: legacyCheckboxClient
+      ? LEGACY_PRIVACY_NOTICE_VERSION
+      : undefined,
     metaTrackingConsent: metaTrackingAllowed,
-    reportStorageConsent: body.reportStorageConsent,
+    reportStorageConsent: reportStorageAllowed,
     meta,
   });
 

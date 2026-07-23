@@ -132,9 +132,13 @@ export interface ServerMetaConversion {
 export interface LeadRequest {
   lead: Lead;
   result: AnalyzeResult;
+  /** Explicit statement confirmed by the camera/upload action. */
+  imageProcessingConsent: boolean;
+  /** Client-recorded time of the affirmative camera/upload action. */
+  imageProcessingConsentAt: string;
   /** Explicit choice for Meta advertising measurement. */
   metaTrackingConsent: boolean;
-  /** Separate choice to retain a face-containing report for the consultation. */
+  /** Covered by the upload statement when the full-report feature is enabled. */
   reportStorageConsent: boolean;
   /** Optional browser attribution; ignored unless Meta tracking is accepted. */
   attribution?: ClientMetaAttribution;

@@ -1,5 +1,9 @@
 import { deliverReportToGhl } from "@/lib/ghl-report";
 import { CLINIC, BOOKING_URL } from "@/lib/constants";
+import {
+  FULL_REPORT_RETENTION_DAYS,
+  fullReportDeleteAfter,
+} from "@/lib/privacy";
 
 export const runtime = "nodejs";
 
@@ -13,7 +17,7 @@ interface ReportRequest {
   suitabilityLabel?: string;
   score?: number;
   pdfBase64?: string;
-  /** Explicit consent to store a face-containing PDF in the clinic CRM. */
+  /** Explicit upload statement covers the face-containing clinic report. */
   reportStorageConsent?: boolean;
 }
 
@@ -21,6 +25,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_BASE64_LENGTH = Math.ceil(MAX_PDF_BYTES / 3) * 4;
+const PRODUCTION_ORIGIN =
+  "https://pigmentation.harleystreetaesthetic.co.uk";
 
 function summaryOnly(reason: string): Response {
   return Response.json({
@@ -63,10 +69,27 @@ function validPdfBase64(value: string): boolean {
   );
 }
 
+/** The dormant full-report relay is restricted to the production web app. */
+export function isProductionReportRequest(request: Request): boolean {
+  let requestOrigin: string;
+  try {
+    requestOrigin = new URL(request.url).origin.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (requestOrigin !== PRODUCTION_ORIGIN) return false;
+
+  const originHeader = request.headers.get("origin")?.trim().toLowerCase();
+  if (originHeader !== PRODUCTION_ORIGIN) return false;
+
+  const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
+  return !fetchSite || fetchSite === "same-origin";
+}
+
 // POST /api/report — a browser-generated report arrives here as base64. A full
-// face-containing PDF may enter GHL only when the visitor explicitly consents
-// and operations has enabled the server-side flag after verifying its deletion
-// workflow. Otherwise the request is deliberately kept in summary-only mode.
+// face-containing PDF may enter GHL only after the visitor confirms the explicit
+// upload statement and operations enables the server-side flag after verifying
+// its deletion workflow. Otherwise the request stays in summary-only mode.
 export async function POST(request: Request): Promise<Response> {
   let body: ReportRequest;
   try {
@@ -84,6 +107,17 @@ export async function POST(request: Request): Promise<Response> {
 
   if (process.env.GHL_FULL_REPORT_STORAGE_ENABLED !== "true") {
     return summaryOnly("full-report-storage-disabled");
+  }
+  if (!isProductionReportRequest(request)) {
+    return Response.json(
+      {
+        ok: false,
+        skipped: true,
+        mode: "summary-only",
+        error: "forbidden-report-origin",
+      },
+      { status: 403 },
+    );
   }
   if (body.reportStorageConsent !== true) {
     return summaryOnly("report-storage-consent-required");
@@ -109,6 +143,7 @@ export async function POST(request: Request): Promise<Response> {
   const label = cleanText(body.suitabilityLabel, 120);
   const score = Number.isFinite(body.score) ? body.score : undefined;
   const emailFirst = escapeHtml(first || "there");
+  const deleteAfter = fullReportDeleteAfter();
 
   const safeName = (first || "client").replace(/[^\w-]/g, "") || "client";
   const fileName = `Pigmentation-Analysis-Report-${safeName}.pdf`;
@@ -129,7 +164,9 @@ export async function POST(request: Request): Promise<Response> {
   const noteParts = ["📄 Pigmentation analysis report"];
   if (label) noteParts.push(`— ${label}`);
   if (score !== undefined) noteParts.push(`(${score}/100)`);
-  const noteBody = `${noteParts.join(" ")}: {url}`;
+  const noteBody = `${noteParts.join(
+    " ",
+  )}: {url}. Delete the face-containing report by ${deleteAfter} (${FULL_REPORT_RETENTION_DAYS}-day retention).`;
 
   const result = await deliverReportToGhl({
     firstName: first,
@@ -141,6 +178,7 @@ export async function POST(request: Request): Promise<Response> {
     subject,
     emailHtml,
     noteBody,
+    deleteAfter,
   });
 
   // Log only the failure category; never include contact details or report data.

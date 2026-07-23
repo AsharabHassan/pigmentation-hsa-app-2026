@@ -13,7 +13,11 @@ const validPdfBase64 = Buffer.from("%PDF-1.4\n%%EOF").toString("base64");
 function reportRequest(overrides: Record<string, unknown> = {}): Request {
   return new Request("https://pigmentation.harleystreetaesthetic.co.uk/api/report", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      origin: "https://pigmentation.harleystreetaesthetic.co.uk",
+      "sec-fetch-site": "same-origin",
+    },
     body: JSON.stringify({
       lead: {
         firstName: "Ava",
@@ -65,6 +69,24 @@ describe("POST /api/report", () => {
     expect(deliverReportToGhl).not.toHaveBeenCalled();
   });
 
+  it("rejects a cross-origin full-report relay request", async () => {
+    vi.stubEnv("GHL_FULL_REPORT_STORAGE_ENABLED", "true");
+    const request = reportRequest();
+    request.headers.set("origin", "https://attacker.example");
+    request.headers.set("sec-fetch-site", "cross-site");
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      skipped: true,
+      mode: "summary-only",
+      error: "forbidden-report-origin",
+    });
+    expect(deliverReportToGhl).not.toHaveBeenCalled();
+  });
+
   it("delivers a validated PDF only when both safety gates pass", async () => {
     vi.stubEnv("GHL_FULL_REPORT_STORAGE_ENABLED", "true");
     deliverReportToGhl.mockResolvedValue({ ok: true, emailed: true });
@@ -81,6 +103,9 @@ describe("POST /api/report", () => {
       expect.objectContaining({
         email: "ava@example.com",
         pdfBase64: validPdfBase64,
+        deleteAfter: expect.stringMatching(
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+        ),
       }),
     );
   });

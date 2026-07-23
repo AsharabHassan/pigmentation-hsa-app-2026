@@ -3,15 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Upload, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ConsentCheckbox } from "@/components/compliance/ConsentCheckbox";
 import { DisclaimerBanner } from "@/components/compliance/DisclaimerBanner";
 import { CameraCapture } from "@/components/scan/CameraCapture";
 import { PhotoGuide } from "@/components/scan/PhotoGuide";
 import { useWizard, type MediaType } from "@/store/wizard-store";
 import { fileToDownscaledImage } from "@/lib/image";
+import { FULL_REPORT_RETENTION_DAYS } from "@/lib/privacy";
 
 const DEMO_CAPTURE_ASSET =
   "/assets/hsa-cinematic/source/pigmentation-model-pexels-24735911.jpg";
+const FULL_REPORT_STORAGE_ENABLED =
+  process.env.NEXT_PUBLIC_GHL_FULL_REPORT_STORAGE_ENABLED === "true";
 
 export function ConsentCaptureScreen() {
   const imageConsent = useWizard((s) => s.imageConsent);
@@ -24,7 +26,7 @@ export function ConsentCaptureScreen() {
   const fileRef = useRef<HTMLInputElement>(null);
   const demoCaptureStartedRef = useRef(false);
 
-  // Development-only capture helper: after the normal consent step, load the
+  // Development-only capture helper: after the normal consent action, load the
   // checked-in demo portrait into the actual file input and dispatch its native
   // change event. This deliberately reuses handleUpload unchanged, so image
   // normalisation, wizard state and the real scan follow the production path.
@@ -63,6 +65,7 @@ export function ConsentCaptureScreen() {
   }, [imageConsent]);
 
   function handleCapture(base64: string, mediaType: MediaType) {
+    setImageConsent(true);
     setImage(base64, mediaType);
     beginScan();
   }
@@ -77,6 +80,7 @@ export function ConsentCaptureScreen() {
       return;
     }
     try {
+      setImageConsent(true);
       // Downscale + re-encode before storing. A full-resolution phone photo held
       // raw in memory can crash/reload the tab on mobile (which resets the wizard
       // back to the start) — this keeps it small and upright.
@@ -103,8 +107,7 @@ export function ConsentCaptureScreen() {
         Our AI gently maps the tone across your face to tailor your result. Your
         photo is securely sent to our AI provider for this one-time analysis and
         remains in this browser while you view your result. This app does not
-        save the original photo. If you later choose to store a face-containing
-        report in our clinic CRM, we&rsquo;ll ask for separate consent.
+        persist the original upload.
       </p>
 
       {mode === "camera" ? (
@@ -121,14 +124,15 @@ export function ConsentCaptureScreen() {
         <div className="mt-8 space-y-5">
           <PhotoGuide />
 
-          <ConsentCheckbox checked={imageConsent} onChange={setImageConsent}>
-            <span>
-              <Lock size={13} className="mr-1 inline text-sage-deep" />I consent
-              to my photo being securely sent to the AI provider for this
-              one-time analysis. I understand that storing a face-containing
-              report in the clinic CRM requires a separate choice later.
-            </span>
-          </ConsentCheckbox>
+          <p className="rounded-2xl border border-sage/25 bg-sage/[0.07] px-4 py-3 text-xs leading-relaxed text-body/80">
+            <Lock size={13} className="mr-1 inline text-sage-deep" />
+            By choosing an option below, I explicitly consent to my selfie being
+            securely sent to the AI provider for this one-time pigmentation
+            analysis.{" "}
+            {FULL_REPORT_STORAGE_ENABLED
+              ? `A derived PDF containing my photo may be sent to the clinic CRM for review with a configured ${FULL_REPORT_RETENTION_DAYS}-day deletion deadline.`
+              : "A written summary will be added to my clinic contact record; my selfie and full PDF will not be stored there."}
+          </p>
 
           {error && (
             <p className="rounded-xl border border-peach/30 bg-peach/15 px-4 py-3 text-sm text-heading">
@@ -140,8 +144,10 @@ export function ConsentCaptureScreen() {
             <Button
               size="lg"
               className="flex-1"
-              disabled={!imageConsent}
-              onClick={() => setMode("camera")}
+              onClick={() => {
+                setImageConsent(true);
+                setMode("camera");
+              }}
             >
               <Camera size={18} /> Use camera
             </Button>
@@ -149,8 +155,10 @@ export function ConsentCaptureScreen() {
               variant="outline"
               size="lg"
               className="flex-1"
-              disabled={!imageConsent}
-              onClick={() => fileRef.current?.click()}
+              onClick={() => {
+                setImageConsent(true);
+                fileRef.current?.click();
+              }}
             >
               <Upload size={18} /> Upload photo
             </Button>

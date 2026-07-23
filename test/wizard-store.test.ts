@@ -46,6 +46,9 @@ describe("wizard-store transitions", () => {
     expect(s().step).toBe("consent"); // blocked: no consent/image
 
     s().setImageConsent(true);
+    expect(s().imageConsentAt).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
     s().setImage("b64", "image/jpeg");
     s().beginScan();
     expect(s().step).toBe("scan");
@@ -104,5 +107,6 @@ describe("wizard-store reset", () => {
     expect(s().imageBase64).toBeNull();
     expect(s().lead).toBeNull();
     expect(s().imageConsent).toBe(false);
+    expect(s().imageConsentAt).toBeNull();
   });
 });
