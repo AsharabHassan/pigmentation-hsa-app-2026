@@ -12,13 +12,14 @@ This app is a sibling of the HSA Endomax Lift analyzer, sharing the same dark-go
    just-in-time processing statement).
 2. **On-device scan** — MediaPipe draws a 478-point face mesh as an "AI analysis" animation while the real Claude Vision call runs behind it. The mesh never leaves the device.
 3. **Lead gate** — name/email/phone only. Submitting sends the requested lead and written result summary to GoHighLevel. No marketing opt-in is collected here; email/SMS consent is handled outside this app.
-4. **Result** — an animated verdict (strong / good / consultation / explore-options), a personalised narrative, an on-face **pigmentation map** (forehead, under-eye, nose, cheeks, upper lip, jawline — cropped from the user's own photo, on-device), the 3-step treatment protocol, and the booking CTA. A branded PDF report is generated in the browser for the visitor's **own download only** — it is never uploaded anywhere.
+4. **Result** — an animated verdict (strong / good / consultation / explore-options), a personalised narrative, an on-face **pigmentation map** (forehead, under-eye, nose, cheeks, upper lip, jawline — cropped from the user's own photo, on-device), the 3-step treatment protocol, and the booking CTA. A branded PDF report is generated in the browser, offered as a direct download, and **automatically delivered**: uploaded to GoHighLevel, written onto the contact, and emailed to the patient with the PDF attached.
 
 ### The safety model
 - **Claude Vision** (`claude-sonnet-4-6`) chooses the cosmetic outcome and writes the narrative under a strict scope guard: observational cosmetic language only — it must never name medical conditions (no "melasma" etc.), never comment on moles or lesions, and routes anything medical-looking to a neutral "consultation" result.
 - Claude returns **zone-level severities only** — all face geometry/crops come from on-device MediaPipe landmarks. The model is never asked for pixel coordinates.
 - The photo is securely sent to the configured AI provider in a single `/api/analyze` request. This app does not persist the original photo to a database or file system and does not log it; the browser keeps it in memory while the visitor views their result. If Claude is unavailable, a deterministic on-brand fallback routes to a consultation, so a user always gets a result.
-- The face-containing PDF is **never** uploaded. There is no report-delivery route, no GHL media upload and no retention deadline to manage: the PDF is built in the browser and handed straight to the visitor's download. GoHighLevel receives the written result summary and nothing more.
+- Report delivery is **automatic and unconditional** — there is no feature flag and no separate opt-in. Every completed analysis emails the patient their report and stores the PDF in GoHighLevel. It is driven entirely by `GHL_API_TOKEN` + `GHL_LOCATION_ID`; if those are unset, `/api/report` no-ops and only the lead webhook fires. The report contains the patient's photo, so treat GHL retention/deletion as a process you own — the app does not purge.
+- `/api/report` is same-origin only, compared against the request's **own** origin (so it works on localhost, previews and production alike). This stops the endpoint being driven cross-site to send arbitrary PDFs from the clinic's GHL account. Patient names are HTML-escaped into the email and uploads must carry a real `%PDF-` header under 10 MB.
 - For the consent-gated HighLevel Funnel Event action, `metaFbclid` is derived server-side from a valid `_fbc` cookie. The browser cannot submit a separate raw `fbclid`, and the field is omitted when advertising consent is absent or the cookie is malformed.
 - Makeup and obscured zones (beard, fringe, glasses, shadow) are detected and honestly caveated rather than guessed at.
 
@@ -38,7 +39,9 @@ npm run dev                         # http://localhost:3000
 |---|---|---|
 | `ANTHROPIC_API_KEY` | server | Claude Vision analysis |
 | `ANTHROPIC_MODEL` | server (optional) | defaults to `claude-sonnet-4-6` |
-| `GHL_WEBHOOK_URL` | server | GoHighLevel inbound webhook — the only route into the CRM |
+| `GHL_WEBHOOK_URL` | server | GoHighLevel inbound webhook (contact + result summary) |
+| `GHL_API_TOKEN` / `GHL_LOCATION_ID` | server | GHL Private Integration — **required** for the automatic patient report email; unset means no report is delivered |
+| `GHL_REPORT_FIELD_KEY` | server (optional) | GHL custom field that receives the hosted report URL (defaults to `facial_app_report_pdf`) |
 | `NEXT_PUBLIC_BOOKING_URL` | public | free online consultation booking link |
 | `NEXT_PUBLIC_SITE_URL` | public | canonical / OG URL |
 | `NEXT_PUBLIC_META_PIXEL_ID` | public | Meta dataset/pixel used by the campaign |
@@ -60,6 +63,7 @@ npm run build   # production build + type-check
 - Replace the **placeholder testimonials** in `components/result/Testimonials.tsx` with HSA's own verified reviews.
 - Add HSA's own **consented before/after pairs** to `/public/results` and populate `CASES` in `components/result/ResultsGallery.tsx` (it ships empty — do not reuse imagery from any other clinic).
 - Confirm the **GoHighLevel webhook URL** maps the received tags into the contact. Every lead now carries `hsa-pigmentation-lead`, `hsa-source-pigmentation-app`, a `pigmentation-<bucket>` tag, and the Meta consent-status tag. **No marketing consent tag is sent** — if your GHL automations previously branched on `hsa-marketing-opt-in` / `hsa-marketing-opt-out`, update them before deploying, or contacts will fall through those conditions.
-- This app collects **no email/SMS marketing consent**. Anyone marketed to from these leads must be opted in through a separate, evidenced route that you control.
+- This app collects **no email/SMS marketing consent**. Anyone marketed to from these leads must be opted in through a separate, evidenced route that you control. The automatic report email is a service message fulfilling the visitor's own request, not marketing.
+- **Verify the report email actually lands** after any deploy touching `/api/report` or `lib/ghl-report.ts` — send a real test lead and confirm the PDF arrives. This delivery was silently disabled once before by a feature flag that defaulted off, and nothing in the UI surfaces the failure (delivery is fire-and-forget by design, so the visitor's reveal never blocks).
 - Confirm the **booking URL** (free online consultation) and clinic contact details in `lib/constants.ts`.
 - A UK GDPR DPIA covering the selfie processing is recommended (the app avoids persisting the original image and keeps the analysis and advertising purposes separate).

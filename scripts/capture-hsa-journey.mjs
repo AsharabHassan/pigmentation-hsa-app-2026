@@ -305,7 +305,9 @@ function installNetworkObservers(client, origin, events) {
         return;
       }
 
-      const blocked = url.origin === origin && url.pathname === "/api/lead";
+      const blocked =
+        url.origin === origin &&
+        (url.pathname === "/api/lead" || url.pathname === "/api/report");
       if (!blocked) {
         await client.send("Fetch.continueRequest", { requestId });
         return;
@@ -336,6 +338,7 @@ async function enableNetworkGuard(client, origin) {
   await client.send("Fetch.enable", {
     patterns: [
       { urlPattern: `${origin}/api/lead*`, requestStage: "Request" },
+      { urlPattern: `${origin}/api/report*`, requestStage: "Request" },
     ],
   });
 }
@@ -343,7 +346,7 @@ async function enableNetworkGuard(client, origin) {
 async function installInPageSafetyGuard(browserPage) {
   await browserPage.evaluateOnNewDocument(() => {
     const realFetch = window.fetch.bind(window);
-    const blockedPaths = new Set(["/api/lead"]);
+    const blockedPaths = new Set(["/api/lead", "/api/report"]);
     window.__hsaCaptureBlockedRequests = [];
 
     const hideDevelopmentUi = () => {

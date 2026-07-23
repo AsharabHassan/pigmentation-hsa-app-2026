@@ -102,9 +102,9 @@ export function ConsentCaptureScreen() {
       </h2>
       <p className="mt-3 text-body">
         Our AI gently maps the tone across your face to tailor your result. Your
-        photo is securely sent to our AI provider for this one-time analysis and
-        remains in this browser while you view your result. This app does not
-        persist the original upload.
+        photo is securely sent to our AI provider for this one-time analysis.
+        This app does not keep the original upload &mdash; your personalised
+        report is emailed to you and saved to your clinic record.
       </p>
 
       {mode === "camera" ? (
@@ -125,8 +125,8 @@ export function ConsentCaptureScreen() {
             <Lock size={13} className="mr-1 inline text-sage-deep" />
             By choosing an option below, I explicitly consent to my selfie being
             securely sent to the AI provider for this one-time pigmentation
-            analysis. A written summary will be added to my clinic contact
-            record; my selfie and full PDF will not be stored there.
+            analysis. My personalised report, which includes my photo, will be
+            emailed to me and saved to my clinic contact record.
           </p>
 
           {error && (

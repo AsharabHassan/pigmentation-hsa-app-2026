@@ -6,7 +6,11 @@ import { Lock, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { useWizard } from "@/store/wizard-store";
-import { requestAnalysis, submitLead } from "@/lib/api-client";
+import {
+  requestAnalysis,
+  submitLead,
+  submitReportToGhl,
+} from "@/lib/api-client";
 import { getMetaAttribution } from "@/lib/meta-pixel";
 import { hasMetaTrackingConsent } from "@/lib/meta-consent";
 import type { Lead } from "@/lib/types";
@@ -18,6 +22,7 @@ export function LeadGateScreen() {
   const imageMediaType = useWizard((s) => s.imageMediaType);
   const imageConsent = useWizard((s) => s.imageConsent);
   const imageConsentAt = useWizard((s) => s.imageConsentAt);
+  const landmarks = useWizard((s) => s.landmarks);
   const storedResult = useWizard((s) => s.result);
   const setLead = useWizard((s) => s.setLead);
   const setResult = useWizard((s) => s.setResult);
@@ -70,8 +75,6 @@ export function LeadGateScreen() {
 
     // The browser sends no conversion event. GHL is the sole source of the
     // server-side Lead and receives Meta fields only after advertising consent.
-    // The CRM gets the written result summary only — the selfie and the report
-    // PDF never leave the browser.
     void submitLead({
       lead,
       result,
@@ -80,6 +83,18 @@ export function LeadGateScreen() {
         imageConsentAt ?? new Date().toISOString(),
       metaTrackingConsent: hasMetaTrackingConsent(),
       attribution: getMetaAttribution(),
+    });
+
+    // Build the report PDF and deliver it to GoHighLevel: uploaded, written onto
+    // the contact, and emailed to the patient with the PDF attached. Automatic
+    // for every lead. Fire-and-forget so the reveal isn't delayed; it no-ops
+    // server-side if the GHL integration env isn't configured.
+    void submitReportToGhl({
+      result,
+      lead,
+      imageBase64,
+      imageMediaType,
+      landmarks,
     });
 
     reveal();
@@ -100,8 +115,8 @@ export function LeadGateScreen() {
           Where shall we send your result?
         </h2>
         <p className="mt-2 text-sm text-body">
-          See your personalised pigmentation analysis. We&rsquo;ll securely add
-          a written summary to your contact record so our doctor-led team can
+          See your personalised pigmentation analysis. We&rsquo;ll email your
+          report and keep a copy on your record so our doctor-led team can
           review it for your free online consultation.
         </p>
 
@@ -136,9 +151,10 @@ export function LeadGateScreen() {
           />
 
           <p className="rounded-2xl border border-sage/20 bg-sage/[0.06] px-4 py-3 text-xs leading-relaxed text-body/75">
-            Your written result summary is added to your contact record. Your
-            selfie and full PDF are not stored in the clinic CRM; you can
-            download your copy after the reveal.
+            We&rsquo;ll email your full report to this address and save a copy to
+            your clinic record so our team can review it before your
+            consultation. The report includes your photo. You can also download
+            it yourself after the reveal.
           </p>
 
           {error && (
