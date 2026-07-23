@@ -8,12 +8,9 @@ import { CameraCapture } from "@/components/scan/CameraCapture";
 import { PhotoGuide } from "@/components/scan/PhotoGuide";
 import { useWizard, type MediaType } from "@/store/wizard-store";
 import { fileToDownscaledImage } from "@/lib/image";
-import { FULL_REPORT_RETENTION_DAYS } from "@/lib/privacy";
 
 const DEMO_CAPTURE_ASSET =
   "/assets/hsa-cinematic/source/pigmentation-model-pexels-24735911.jpg";
-const FULL_REPORT_STORAGE_ENABLED =
-  process.env.NEXT_PUBLIC_GHL_FULL_REPORT_STORAGE_ENABLED === "true";
 
 export function ConsentCaptureScreen() {
   const imageConsent = useWizard((s) => s.imageConsent);
@@ -128,10 +125,8 @@ export function ConsentCaptureScreen() {
             <Lock size={13} className="mr-1 inline text-sage-deep" />
             By choosing an option below, I explicitly consent to my selfie being
             securely sent to the AI provider for this one-time pigmentation
-            analysis.{" "}
-            {FULL_REPORT_STORAGE_ENABLED
-              ? `A derived PDF containing my photo may be sent to the clinic CRM for review with a configured ${FULL_REPORT_RETENTION_DAYS}-day deletion deadline.`
-              : "A written summary will be added to my clinic contact record; my selfie and full PDF will not be stored there."}
+            analysis. A written summary will be added to my clinic contact
+            record; my selfie and full PDF will not be stored there.
           </p>
 
           {error && (

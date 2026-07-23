@@ -6,11 +6,7 @@ import type {
   ServerMetaConversion,
 } from "./types";
 import { BUCKET_META } from "./constants";
-import {
-  ANALYSIS_PRIVACY_NOTICE_VERSION,
-  FULL_REPORT_RETENTION_DAYS,
-  fullReportDeleteAfter,
-} from "./privacy";
+import { ANALYSIS_PRIVACY_NOTICE_VERSION } from "./privacy";
 
 export const META_DATASET_ID = "1849043682301992" as const;
 export const META_EVENT_NAME = "Lead" as const;
@@ -33,15 +29,11 @@ export interface GhlPayload {
   usedPhoto: boolean;
   narrativeSource: string;
   headline: string;
-  marketingConsent: boolean;
   imageProcessingConsent: boolean;
   imageProcessingConsentAt?: string;
   imageProcessingConsentRecordedAt?: string;
   privacyNoticeVersion: string;
   metaTrackingConsent: boolean;
-  reportStorageConsent: boolean;
-  reportRetentionDays?: number;
-  reportDeleteAfter?: string;
   submittedAt?: string;
   // Flat, allow-listed fields for the conditional GHL -> Meta CAPI action.
   metaDatasetId?: string;
@@ -68,7 +60,6 @@ export interface BuildGhlPayloadOptions {
   imageProcessingConsentAt?: string;
   privacyNoticeVersion?: string;
   metaTrackingConsent: boolean;
-  reportStorageConsent: boolean;
   meta?: ServerMetaConversion;
 }
 
@@ -170,14 +161,6 @@ export function buildGhlPayload(
         metaClientIpAddress: meta.clientIpAddress,
       }
     : {};
-  const reportFields: Partial<GhlPayload> = options.reportStorageConsent
-    ? {
-        reportRetentionDays: FULL_REPORT_RETENTION_DAYS,
-        ...(options.submittedAt
-          ? { reportDeleteAfter: fullReportDeleteAfter(options.submittedAt) }
-          : {}),
-      }
-    : {};
 
   return {
     firstName: lead.firstName,
@@ -191,9 +174,6 @@ export function buildGhlPayload(
       "hsa-pigmentation-lead",
       "hsa-source-pigmentation-app",
       `pigmentation-${result.bucket}`,
-      lead.marketingConsent
-        ? "hsa-marketing-opt-in"
-        : "hsa-marketing-opt-out",
       options.metaTrackingConsent
         ? "hsa-meta-consent-accepted"
         : "hsa-meta-consent-declined",
@@ -206,7 +186,6 @@ export function buildGhlPayload(
     usedPhoto: result.usedPhoto,
     narrativeSource: result.narrativeSource,
     headline: result.narrative.headline,
-    marketingConsent: lead.marketingConsent,
     imageProcessingConsent: options.imageProcessingConsent,
     imageProcessingConsentAt: options.imageProcessingConsent
       ? (options.imageProcessingConsentAt ?? options.submittedAt)
@@ -217,9 +196,7 @@ export function buildGhlPayload(
     privacyNoticeVersion:
       options.privacyNoticeVersion ?? ANALYSIS_PRIVACY_NOTICE_VERSION,
     metaTrackingConsent: options.metaTrackingConsent,
-    reportStorageConsent: options.reportStorageConsent,
     submittedAt: options.submittedAt,
-    ...reportFields,
     ...metaFields,
   };
 }

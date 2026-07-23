@@ -66,8 +66,6 @@ export interface Lead {
   lastName: string;
   email: string;
   phone: string;
-  /** Separate PECR marketing consent. */
-  marketingConsent: boolean;
 }
 
 /** Request body for POST /api/analyze. */
@@ -138,8 +136,6 @@ export interface LeadRequest {
   imageProcessingConsentAt: string;
   /** Explicit choice for Meta advertising measurement. */
   metaTrackingConsent: boolean;
-  /** Covered by the upload statement when the full-report feature is enabled. */
-  reportStorageConsent: boolean;
   /** Optional browser attribution; ignored unless Meta tracking is accepted. */
   attribution?: ClientMetaAttribution;
 }

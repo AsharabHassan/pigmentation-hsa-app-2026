@@ -5,28 +5,19 @@ import { motion } from "motion/react";
 import { Lock, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
-import { ConsentCheckbox } from "@/components/compliance/ConsentCheckbox";
 import { useWizard } from "@/store/wizard-store";
-import {
-  requestAnalysis,
-  submitLead,
-  submitReportToGhl,
-} from "@/lib/api-client";
+import { requestAnalysis, submitLead } from "@/lib/api-client";
 import { getMetaAttribution } from "@/lib/meta-pixel";
 import { hasMetaTrackingConsent } from "@/lib/meta-consent";
-import { FULL_REPORT_RETENTION_DAYS } from "@/lib/privacy";
 import type { Lead } from "@/lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const FULL_REPORT_STORAGE_ENABLED =
-  process.env.NEXT_PUBLIC_GHL_FULL_REPORT_STORAGE_ENABLED === "true";
 
 export function LeadGateScreen() {
   const imageBase64 = useWizard((s) => s.imageBase64);
   const imageMediaType = useWizard((s) => s.imageMediaType);
   const imageConsent = useWizard((s) => s.imageConsent);
   const imageConsentAt = useWizard((s) => s.imageConsentAt);
-  const landmarks = useWizard((s) => s.landmarks);
   const storedResult = useWizard((s) => s.result);
   const setLead = useWizard((s) => s.setLead);
   const setResult = useWizard((s) => s.setResult);
@@ -36,7 +27,6 @@ export function LeadGateScreen() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [marketing, setMarketing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -62,7 +52,6 @@ export function LeadGateScreen() {
       lastName: lastName.trim(),
       email: email.trim(),
       phone: phone.trim(),
-      marketingConsent: marketing,
     };
     setLead(lead);
 
@@ -78,11 +67,11 @@ export function LeadGateScreen() {
       });
       setResult(result);
     }
-    const reportStorageConsent =
-      FULL_REPORT_STORAGE_ENABLED && imageConsent;
 
     // The browser sends no conversion event. GHL is the sole source of the
     // server-side Lead and receives Meta fields only after advertising consent.
+    // The CRM gets the written result summary only — the selfie and the report
+    // PDF never leave the browser.
     void submitLead({
       lead,
       result,
@@ -90,23 +79,9 @@ export function LeadGateScreen() {
       imageProcessingConsentAt:
         imageConsentAt ?? new Date().toISOString(),
       metaTrackingConsent: hasMetaTrackingConsent(),
-      reportStorageConsent,
       attribution: getMetaAttribution(),
     });
 
-    // A face-containing PDF may enter GHL only when both deployment flags and
-    // the explicit upload action are true. Otherwise the CRM receives the text
-    // result summary above and the full PDF remains local.
-    if (reportStorageConsent) {
-      void submitReportToGhl({
-        result,
-        lead,
-        imageBase64,
-        imageMediaType,
-        landmarks,
-        reportStorageConsent,
-      });
-    }
     reveal();
   }
 
@@ -161,27 +136,10 @@ export function LeadGateScreen() {
           />
 
           <p className="rounded-2xl border border-sage/20 bg-sage/[0.06] px-4 py-3 text-xs leading-relaxed text-body/75">
-            {FULL_REPORT_STORAGE_ENABLED ? (
-              <>
-                A derived PDF containing your photo may be sent to the clinic CRM
-                for review. HSA&rsquo;s configured deletion deadline is{" "}
-                {FULL_REPORT_RETENTION_DAYS} days; you can also download your own
-                copy after the reveal.
-              </>
-            ) : (
-              <>
-                Your written result summary is added to your contact record.
-                Your selfie and full PDF are not stored in the clinic CRM; you
-                can download your copy after the reveal.
-              </>
-            )}
+            Your written result summary is added to your contact record. Your
+            selfie and full PDF are not stored in the clinic CRM; you can
+            download your copy after the reveal.
           </p>
-
-          <ConsentCheckbox checked={marketing} onChange={setMarketing}>
-            Send me future skincare news and treatment offers by email or SMS.
-            Optional &mdash; your requested result and clinic record are created
-            either way.
-          </ConsentCheckbox>
 
           {error && (
             <p className="rounded-xl border border-peach/30 bg-peach/15 px-4 py-2.5 text-sm text-heading">

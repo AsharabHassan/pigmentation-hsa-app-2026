@@ -5,6 +5,7 @@ import {
   createServerMetaConversion,
 } from "@/lib/ghl";
 import { serverEnv } from "@/lib/env";
+import type { Lead } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -35,9 +36,21 @@ const leadSchema = z
       .min(7)
       .max(32)
       .refine((value) => value.replace(/\D/g, "").length >= 7),
-    marketingConsent: z.boolean(),
+    // The retired marketing checkbox. A client version still open in a
+    // visitor's tab may keep sending it; accepted so a strict-mode rejection
+    // never loses an in-flight lead, then dropped by the transform below so no
+    // marketing consent signal can reach the CRM.
+    marketingConsent: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .transform(
+    ({ firstName, lastName, email, phone }): Lead => ({
+      firstName,
+      lastName,
+      email,
+      phone,
+    }),
+  );
 
 const resultSchema = z
   .object({
@@ -84,7 +97,9 @@ export const leadRequestSchema = z
     imageProcessingConsent: z.literal(true).optional(),
     imageProcessingConsentAt: z.string().datetime().optional(),
     metaTrackingConsent: z.boolean(),
-    reportStorageConsent: z.boolean(),
+    // Retired alongside the full-report feature. Accepted from an already-open
+    // tab for the same reason as `marketingConsent`, and never acted upon.
+    reportStorageConsent: z.boolean().optional(),
     attribution: attributionSchema.optional(),
   })
   .strict()
@@ -139,13 +154,6 @@ export function isProductionMetaRequest(request: Request): boolean {
 export interface DeliveryResult {
   delivered: boolean;
   attempts: number;
-}
-
-export function isFullReportStorageAllowed(requested: boolean): boolean {
-  return (
-    requested &&
-    process.env.GHL_FULL_REPORT_STORAGE_ENABLED === "true"
-  );
 }
 
 export async function deliverWebhook(
@@ -209,9 +217,6 @@ export async function POST(request: Request): Promise<Response> {
   const legacyCheckboxClient = body.imageProcessingConsent === undefined;
   const metaTrackingAllowed =
     body.metaTrackingConsent && isProductionMetaRequest(request);
-  const reportStorageAllowed = isFullReportStorageAllowed(
-    body.reportStorageConsent,
-  );
   const meta = metaTrackingAllowed
     ? createServerMetaConversion({
         lead: body.lead,
@@ -229,7 +234,6 @@ export async function POST(request: Request): Promise<Response> {
       ? LEGACY_PRIVACY_NOTICE_VERSION
       : undefined,
     metaTrackingConsent: metaTrackingAllowed,
-    reportStorageConsent: reportStorageAllowed,
     meta,
   });
 

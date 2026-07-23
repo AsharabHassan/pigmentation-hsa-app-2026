@@ -9,7 +9,6 @@ const lead: Lead = {
   lastName: "Doe",
   email: "jane@example.com",
   phone: "07700900123",
-  marketingConsent: true,
 };
 
 const result: AnalyzeResult = {
