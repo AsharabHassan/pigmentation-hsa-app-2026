@@ -5,6 +5,7 @@ import {
   createServerMetaConversion,
 } from "@/lib/ghl";
 import { serverEnv } from "@/lib/env";
+import { ensureLeadRoutingInGhl } from "@/lib/ghl-contact";
 import type { Lead } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -248,8 +249,18 @@ export async function POST(request: Request): Promise<Response> {
     webhook = undefined;
   }
 
-  let delivery: DeliveryResult = { delivered: false, attempts: 0 };
-  if (webhook) delivery = await deliverWebhook(webhook, payload);
+  const deliveryPromise = webhook
+    ? deliverWebhook(webhook, payload)
+    : Promise.resolve<DeliveryResult>({ delivered: false, attempts: 0 });
+  const routingPromise = ensureLeadRoutingInGhl({
+    lead: body.lead,
+    source: `Pigmentation Analyzer · ${payload.clinicLocationLabel}`,
+    tags: payload.tags,
+  });
+  const [delivery, routing] = await Promise.all([
+    deliveryPromise,
+    routingPromise,
+  ]);
 
   const trackingQueued = Boolean(meta && delivery.delivered);
   const log = {
@@ -257,6 +268,7 @@ export async function POST(request: Request): Promise<Response> {
     delivered: delivery.delivered,
     attempts: delivery.attempts,
     trackingQueued,
+    routingEnsured: routing.ok && routing.tagged === true,
     webhookConfigured: Boolean(webhook),
   };
   if (delivery.delivered) console.info("[lead]", log);
@@ -266,5 +278,6 @@ export async function POST(request: Request): Promise<Response> {
     ok: true,
     delivered: delivery.delivered,
     trackingQueued,
+    routingEnsured: routing.ok && routing.tagged === true,
   });
 }
