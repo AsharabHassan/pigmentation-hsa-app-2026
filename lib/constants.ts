@@ -1,4 +1,5 @@
-import type { Bucket } from "./types";
+import type { Bucket, ClinicLocationKey } from "./types";
+export type { ClinicLocationKey } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Clinic brand + contact constants (Harley Street Aesthetics, London & Glasgow).
@@ -6,6 +7,7 @@ import type { Bucket } from "./types";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ClinicLocation {
+  key: ClinicLocationKey;
   city: string;
   lines: string[];
   phone: string;
@@ -29,12 +31,14 @@ export const CLINIC = {
   hours: "Mon–Sat · by appointment",
   locations: [
     {
+      key: "london",
       city: "London",
       lines: ["10 Harley Street", "London W1G 9PF"],
       phone: "020 4628 3165",
       phoneHref: "tel:+442046283165",
     },
     {
+      key: "glasgow",
       city: "Glasgow",
       lines: ["5th Floor, Ingram House", "227 Ingram Street, Glasgow G1 1DA"],
       phone: "0141 488 8985",
@@ -56,6 +60,8 @@ const CONFIGURED_BOOKING_URL =
   process.env.NEXT_PUBLIC_PHOREST_BOOKING_URL;
 const WORKING_BOOKING_URL =
   "https://harleystreetaesthetic.co.uk/london/contact/";
+const WORKING_GLASGOW_BOOKING_URL =
+  "https://harleystreetaesthetic.co.uk/glasgow/contact/";
 
 // Protect production from the retired route if a stale Vercel value survives
 // one deployment. Other explicitly configured booking providers still work.
@@ -66,6 +72,27 @@ export const BOOKING_URL =
   )
     ? WORKING_BOOKING_URL
     : CONFIGURED_BOOKING_URL;
+
+export const BOOKING_URLS: Record<ClinicLocationKey, string> = {
+  london: BOOKING_URL,
+  glasgow:
+    process.env.NEXT_PUBLIC_GLASGOW_BOOKING_URL ??
+    WORKING_GLASGOW_BOOKING_URL,
+};
+
+export const DEFAULT_CLINIC_LOCATION: ClinicLocationKey = "london";
+
+export function isClinicLocationKey(
+  value: unknown,
+): value is ClinicLocationKey {
+  return value === "london" || value === "glasgow";
+}
+
+export function getClinicLocation(location: ClinicLocationKey) {
+  const clinic = CLINIC.locations.find((item) => item.key === location);
+  if (!clinic) throw new Error(`Unknown clinic location: ${location}`);
+  return { ...clinic, bookingUrl: BOOKING_URLS[location] };
+}
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
@@ -112,7 +139,7 @@ export const BUCKET_META: Record<Bucket, BucketMeta> = {
     label: "Consultation recommended",
     headline: "Let's look at your skin together",
     blurb:
-      "Your skin is best reviewed by our Harley Street team before we can be sure of the right plan. That's completely normal.",
+      "Your skin is best reviewed by our doctor-led team before we can be sure of the right plan. That's completely normal.",
     accent: "sage",
     ctaLabel: "Book Your Free Online Consultation",
     gaugeBand: [55, 75],

@@ -14,6 +14,11 @@ This app is a sibling of the HSA Endomax Lift analyzer, sharing the same dark-go
 3. **Lead gate** — name/email/phone only. Submitting sends the requested lead and written result summary to GoHighLevel. No marketing opt-in is collected here; email/SMS consent is handled outside this app.
 4. **Result** — an animated verdict (strong / good / consultation / explore-options), a personalised narrative, an on-face **pigmentation map** (forehead, under-eye, nose, cheeks, upper lip, jawline — cropped from the user's own photo, on-device), the 3-step treatment protocol, and the booking CTA. A branded PDF report is generated in the browser, offered as a direct download, and **automatically delivered**: uploaded to GoHighLevel, written onto the contact, and emailed to the patient with the PDF attached.
 
+The London campaign lands on `/`; the Glasgow campaign lands on `/glasgow`.
+Both use the same application and Meta `Lead` conversion, while the selected
+route controls the clinic wording, address, phone, consultation link, PDF/email
+details and the location fields/tags sent to GoHighLevel.
+
 ### The safety model
 - **Claude Vision** (`claude-sonnet-4-6`) chooses the cosmetic outcome and writes the narrative under a strict scope guard: observational cosmetic language only — it must never name medical conditions (no "melasma" etc.), never comment on moles or lesions, and routes anything medical-looking to a neutral "consultation" result.
 - Claude returns **zone-level severities only** — all face geometry/crops come from on-device MediaPipe landmarks. The model is never asked for pixel coordinates.
@@ -42,7 +47,8 @@ npm run dev                         # http://localhost:3000
 | `GHL_WEBHOOK_URL` | server | GoHighLevel inbound webhook (contact + result summary) |
 | `GHL_API_TOKEN` / `GHL_LOCATION_ID` | server | GHL Private Integration — **required** for the automatic patient report email; unset means no report is delivered |
 | `GHL_REPORT_FIELD_KEY` | server (optional) | GHL custom field that receives the hosted report URL (defaults to `facial_app_report_pdf`) |
-| `NEXT_PUBLIC_BOOKING_URL` | public | free online consultation booking link |
+| `NEXT_PUBLIC_BOOKING_URL` | public | London free online consultation link |
+| `NEXT_PUBLIC_GLASGOW_BOOKING_URL` | public | Glasgow free online consultation link |
 | `NEXT_PUBLIC_SITE_URL` | public | canonical / OG URL |
 | `NEXT_PUBLIC_META_PIXEL_ID` | public | Meta dataset/pixel used by the campaign |
 
@@ -62,7 +68,7 @@ npm run build   # production build + type-check
 - Run several test photos and **audit the narratives** for medical condition names before launch.
 - Replace the **placeholder testimonials** in `components/result/Testimonials.tsx` with HSA's own verified reviews.
 - Add HSA's own **consented before/after pairs** to `/public/results` and populate `CASES` in `components/result/ResultsGallery.tsx` (it ships empty — do not reuse imagery from any other clinic).
-- Confirm the **GoHighLevel webhook URL** maps the received tags into the contact. Every lead now carries `hsa-pigmentation-lead`, `hsa-source-pigmentation-app`, a `pigmentation-<bucket>` tag, and the Meta consent-status tag. **No marketing consent tag is sent** — if your GHL automations previously branched on `hsa-marketing-opt-in` / `hsa-marketing-opt-out`, update them before deploying, or contacts will fall through those conditions.
+- Confirm the **GoHighLevel webhook URL** maps the received tags into the contact. Every lead now carries `hsa-pigmentation-lead`, `hsa-source-pigmentation-app`, an `hsa-clinic-london` or `hsa-clinic-glasgow` tag, a `pigmentation-<bucket>` tag, and the Meta consent-status tag. The flat `clinicLocation`, `clinicLocationLabel` and `clinicAddress` fields are also included. **No marketing consent tag is sent** — if your GHL automations previously branched on `hsa-marketing-opt-in` / `hsa-marketing-opt-out`, update them before deploying, or contacts will fall through those conditions.
 - This app collects **no email/SMS marketing consent**. Anyone marketed to from these leads must be opted in through a separate, evidenced route that you control. The automatic report email is a service message fulfilling the visitor's own request, not marketing.
 - **Verify the report email actually lands** after any deploy touching `/api/report` or `lib/ghl-report.ts` — send a real test lead and confirm the PDF arrives. This delivery was silently disabled once before by a feature flag that defaulted off, and nothing in the UI surfaces the failure (delivery is fire-and-forget by design, so the visitor's reveal never blocks).
 - Confirm the **booking URL** (free online consultation) and clinic contact details in `lib/constants.ts`.

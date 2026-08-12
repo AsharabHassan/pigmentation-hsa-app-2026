@@ -29,6 +29,8 @@ export interface DeliverInput {
   subject: string;
   emailHtml: string;
   noteBody: string; // may contain "{url}" placeholder
+  source: string;
+  tags: string[];
 }
 
 export interface DeliverResult {
@@ -38,6 +40,7 @@ export interface DeliverResult {
   contactId?: string;
   emailed?: boolean;
   noted?: boolean;
+  tagged?: boolean;
   error?: string;
 }
 
@@ -88,9 +91,10 @@ export async function deliverReportToGhl(
       lastName: input.lastName,
       email: input.email,
       phone: input.phone,
+      source: input.source,
     };
     if (fieldKey) {
-      upsertBody.customFields = [{ key: fieldKey, field_value: fileUrl }];
+      upsertBody.customFields = [{ key: fieldKey, fieldValue: fileUrl }];
     }
     const us = await fetch(`${BASE}/contacts/upsert`, {
       method: "POST",
@@ -103,6 +107,21 @@ export async function deliverReportToGhl(
     const contactId = usj.contact?.id;
     if (!contactId) {
       return { ok: false, fileUrl, error: `contact-upsert ${us.status}` };
+    }
+
+    // Add location and campaign tags without overwriting tags already held by
+    // the contact. This direct path guarantees Glasgow routing even if the
+    // inbound-webhook workflow misses its own tag-mapping action.
+    let tagged = false;
+    try {
+      const tg = await fetch(`${BASE}/contacts/${contactId}/tags`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: input.tags }),
+      });
+      tagged = tg.ok;
+    } catch {
+      /* non-fatal — the webhook remains the primary lead/tag route */
     }
 
     // 3 ── pin a note with the report link on the contact (always lands)
@@ -137,7 +156,7 @@ export async function deliverReportToGhl(
       /* non-fatal — the report is still on the contact via the note + media */
     }
 
-    return { ok: true, fileUrl, contactId, emailed, noted };
+    return { ok: true, fileUrl, contactId, emailed, noted, tagged };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "ghl-error" };
   }

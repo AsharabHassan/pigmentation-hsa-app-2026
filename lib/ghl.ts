@@ -4,8 +4,9 @@ import type {
   ClientMetaAttribution,
   Lead,
   ServerMetaConversion,
+  ClinicLocationKey,
 } from "./types";
-import { BUCKET_META } from "./constants";
+import { BUCKET_META, getClinicLocation } from "./constants";
 import { ANALYSIS_PRIVACY_NOTICE_VERSION } from "./privacy";
 
 export const META_DATASET_ID = "1849043682301992" as const;
@@ -21,6 +22,9 @@ export interface GhlPayload {
   phone: string;
   source: string;
   tags: string[];
+  clinicLocation: ClinicLocationKey;
+  clinicLocationLabel: string;
+  clinicAddress: string;
   suitabilityBucket: string;
   suitabilityLabel: string;
   suitabilityScore: number;
@@ -56,6 +60,7 @@ export interface GhlPayload {
 
 export interface BuildGhlPayloadOptions {
   submittedAt?: string;
+  clinicLocation: ClinicLocationKey;
   imageProcessingConsent: boolean;
   imageProcessingConsentAt?: string;
   privacyNoticeVersion?: string;
@@ -140,6 +145,7 @@ export function buildGhlPayload(
   result: AnalyzeResult,
   options: BuildGhlPayloadOptions,
 ): GhlPayload {
+  const clinic = getClinicLocation(options.clinicLocation);
   const meta = options.metaTrackingConsent ? options.meta : undefined;
   const metaFields: Partial<GhlPayload> = meta
     ? {
@@ -173,11 +179,15 @@ export function buildGhlPayload(
       "pigmentation-analyzer",
       "hsa-pigmentation-lead",
       "hsa-source-pigmentation-app",
+      `hsa-clinic-${clinic.key}`,
       `pigmentation-${result.bucket}`,
       options.metaTrackingConsent
         ? "hsa-meta-consent-accepted"
         : "hsa-meta-consent-declined",
     ],
+    clinicLocation: clinic.key,
+    clinicLocationLabel: clinic.city,
+    clinicAddress: clinic.lines.join(", "),
     suitabilityBucket: result.bucket,
     suitabilityLabel: BUCKET_META[result.bucket].label,
     suitabilityScore: result.score,

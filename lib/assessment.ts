@@ -60,7 +60,7 @@ export function genericFallbackResult(usedPhoto: boolean): AnalyzeResult {
     narrative: {
       headline: "Let's look at your skin together",
       narrative:
-        "We couldn't fully read your photo this time, but that's no problem at all. The surest way to understand your pigmentation — and what our Signature Pigmentation Removal Treatment could do for it — is a quick chat with our Harley Street team.",
+        "We couldn't fully read your photo this time, but that's no problem at all. The surest way to understand your pigmentation — and what our Signature Pigmentation Removal Treatment could do for it — is a quick chat with our doctor-led team.",
       observedAreas: [],
       encouragement:
         "Book your free online consultation whenever you're ready — we'll talk you through everything, with no pressure.",

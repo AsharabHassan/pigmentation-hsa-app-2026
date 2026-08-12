@@ -1,5 +1,10 @@
 import { deliverReportToGhl } from "@/lib/ghl-report";
-import { CLINIC, BOOKING_URL } from "@/lib/constants";
+import {
+  CLINIC,
+  getClinicLocation,
+  isClinicLocationKey,
+} from "@/lib/constants";
+import type { ClinicLocationKey } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -13,6 +18,7 @@ interface ReportRequest {
   suitabilityLabel?: string;
   score?: number;
   pdfBase64?: string;
+  clinicLocation?: ClinicLocationKey;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -60,16 +66,15 @@ function validPdfBase64(value: string): boolean {
  * Keep the endpoint from being driven cross-site as a mail relay: an attacker
  * could otherwise POST any address + PDF and have the clinic's own GHL account
  * send it. Compared against the request's OWN origin, never a hardcoded one, so
- * this holds on localhost, previews and production alike. A caller with no
- * browser origin headers at all is allowed through — this guard must never be
- * the reason a real patient's report fails to send.
+ * this holds on localhost, previews and production alike. The app always sends
+ * an Origin header for this JSON POST, so callers without one are rejected.
  */
 export function isSameOriginReportRequest(request: Request): boolean {
   const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
   if (fetchSite && fetchSite !== "same-origin") return false;
 
   const originHeader = request.headers.get("origin")?.trim().toLowerCase();
-  if (!originHeader) return true;
+  if (!originHeader) return false;
 
   try {
     return originHeader === new URL(request.url).origin.toLowerCase();
@@ -115,6 +120,10 @@ export async function POST(request: Request): Promise<Response> {
   const label = cleanText(body.suitabilityLabel, 120);
   const score = Number.isFinite(body.score) ? body.score : undefined;
   const emailFirst = escapeHtml(first || "there");
+  const clinicLocation = isClinicLocationKey(body.clinicLocation)
+    ? body.clinicLocation
+    : "london";
+  const clinic = getClinicLocation(clinicLocation);
 
   const safeName = (first || "client").replace(/[^\w-]/g, "") || "client";
   const fileName = `Pigmentation-Analysis-Report-${safeName}.pdf`;
@@ -124,15 +133,15 @@ export async function POST(request: Request): Promise<Response> {
     <div style="font-family:Helvetica,Arial,sans-serif;color:#1c1a16;line-height:1.6">
       <p>Hi ${emailFirst},</p>
       <p>Thank you for taking the pigmentation analysis at
-      <strong>${CLINIC.name}</strong>. Your personalised report is attached as a PDF.</p>
+      <strong>${CLINIC.name} ${clinic.city}</strong>. Your personalised report is attached as a PDF.</p>
       <p>It's a guide to help you prepare — your suitability is always confirmed by
       a practitioner. When you're ready, book your free online consultation and
       we'll talk you through everything.</p>
-      <p><a href="${BOOKING_URL}" style="color:#b8902a">Book your free online consultation →</a></p>
-      <p style="color:#5c5852">— ${CLINIC.name}, ${CLINIC.byline}</p>
+      <p><a href="${clinic.bookingUrl}" style="color:#b8902a">Book your free online consultation →</a></p>
+      <p style="color:#5c5852">— ${CLINIC.name}, ${clinic.city}</p>
     </div>`;
 
-  const noteParts = ["📄 Pigmentation analysis report"];
+  const noteParts = [`📄 ${clinic.city} pigmentation analysis report`];
   if (label) noteParts.push(`— ${label}`);
   if (score !== undefined) noteParts.push(`(${score}/100)`);
   const noteBody = `${noteParts.join(" ")}: {url}`;
@@ -147,6 +156,13 @@ export async function POST(request: Request): Promise<Response> {
     subject,
     emailHtml,
     noteBody,
+    source: `Pigmentation Analyzer · ${clinic.city}`,
+    tags: [
+      "pigmentation-analyzer",
+      "hsa-pigmentation-lead",
+      "hsa-source-pigmentation-app",
+      `hsa-clinic-${clinic.key}`,
+    ],
   });
 
   // Surface the failure category in the server log without leaking the PDF or

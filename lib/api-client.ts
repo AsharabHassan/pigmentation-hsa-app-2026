@@ -1,6 +1,7 @@
 import type {
   AnalyzeRequest,
   AnalyzeResult,
+  ClinicLocationKey,
   Lead,
   LeadRequest,
 } from "./types";
@@ -65,6 +66,7 @@ function blobToBase64(blob: Blob): Promise<string> {
 export async function submitReportToGhl(opts: {
   result: AnalyzeResult;
   lead: Lead;
+  clinicLocation: ClinicLocationKey;
   imageBase64: string | null;
   imageMediaType: string;
   landmarks: NormalizedPoint[] | null;
@@ -77,6 +79,7 @@ export async function submitReportToGhl(opts: {
       imageMediaType: opts.imageMediaType,
       landmarks: opts.landmarks,
       lead: opts.lead,
+      clinicLocation: opts.clinicLocation,
     });
     const pdfBase64 = await blobToBase64(blob);
     await fetch("/api/report", {
@@ -84,6 +87,7 @@ export async function submitReportToGhl(opts: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         lead: opts.lead,
+        clinicLocation: opts.clinicLocation,
         suitabilityLabel: BUCKET_META[opts.result.bucket].label,
         score: opts.result.score,
         pdfBase64,

@@ -60,6 +60,22 @@ export const RemotionRoot = () => {
           } satisfies HsaPigmentationSliderProps
         }
       />
+      <Composition
+        id="HsaPigmentationSliderGlasgow"
+        component={HsaPigmentationSlider}
+        durationInFrames={15 * FPS}
+        fps={FPS}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          resultSrc:
+            'assets/hsa-cinematic/creative-02/hsa-pigmentation-slider-master.png',
+          scoreSrc: 'assets/hsa-cinematic/audio/hsa-elevenlabs-cinematic-v2.mp3',
+          openingLabel: 'HSA GALLERY RESULT · GLASGOW CONSULTATIONS',
+          ctaBrand: 'HSA GLASGOW',
+          ctaAddress: 'Ingram House · 227 Ingram Street · Glasgow G1 1DA',
+        }}
+      />
     </>
   );
 };

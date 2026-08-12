@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Sparkles, ImagePlus } from "lucide-react";
 import { BeforeAfterSlider } from "./BeforeAfterSlider";
 import { EASE } from "@/lib/motion";
+import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Before/after gallery.
@@ -31,6 +32,8 @@ interface Case {
 const CASES: Case[] = [];
 
 export function ResultsGallery() {
+  const clinic = useClinicLocation();
+
   return (
     <div>
       <div className="flex items-center justify-center gap-2 text-center">
@@ -40,7 +43,7 @@ export function ResultsGallery() {
         </h3>
       </div>
       <p className="mx-auto mt-1 max-w-md text-center text-[13px] leading-relaxed text-body/80">
-        Actual pigmentation results from our Harley Street team. Individual
+        Actual pigmentation results from our {clinic.city} team. Individual
         results vary — yours is confirmed at your consultation.
       </p>
 

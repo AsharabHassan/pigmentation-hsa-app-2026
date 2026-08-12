@@ -2,14 +2,17 @@
 
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, MapPin, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWizard } from "@/store/wizard-store";
 import { EASE } from "@/lib/motion";
 import { useLightFx } from "@/lib/use-light-fx";
+import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
 export function HeroScreen() {
   const start = useWizard((s) => s.start);
+  const clinic = useClinicLocation();
+  const isGlasgow = clinic.key === "glasgow";
 
   return (
     <section className="relative mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col items-center justify-center px-6 py-16 text-center">
@@ -21,13 +24,17 @@ export function HeroScreen() {
         transition={{ duration: 0.8, ease: EASE, delay: 0.15 }}
         className="relative z-10 inline-flex items-center gap-2 rounded-full border border-peach/35 bg-white/[0.04] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-peach shadow-[0_8px_30px_-12px_rgba(212,175,55,0.5)] backdrop-blur-md"
       >
-        <Sparkles size={13} /> AI pigmentation analysis
+        <Sparkles size={13} /> AI pigmentation analysis · {clinic.city}
       </motion.span>
 
       <h1 className="relative z-10 mt-8 font-serif text-[46px] leading-[1.02] tracking-tight text-heading sm:text-[68px]">
-        <Line delay={0.35}>Say goodbye to</Line>
+        <Line delay={0.35}>
+          {isGlasgow ? "Glasgow’s smarter first step" : "Say goodbye to"}
+        </Line>
         <Line delay={0.5}>
-          <span className="italic text-peach">pigmentation</span>
+          <span className="italic text-peach">
+            {isGlasgow ? "for pigmentation" : "pigmentation"}
+          </span>
         </Line>
       </h1>
 
@@ -37,10 +44,9 @@ export function HeroScreen() {
         transition={{ duration: 0.9, ease: EASE, delay: 0.85 }}
         className="relative z-10 mt-7 max-w-md text-lg leading-relaxed text-body"
       >
-        Take a photo and our AI maps the dark spots and uneven tone across your
-        face in seconds — a doctor-led guide to our Signature Pigmentation
-        Removal Treatment at Harley Street Aesthetics. No pressure, just
-        clarity.
+        {isGlasgow
+          ? "Upload a selfie for a personalised cosmetic report mapping visible tone variation. Then book a free online consultation with our doctor-led Glasgow team to discuss a bespoke treatment plan."
+          : "Take a photo and our AI maps the dark spots and uneven tone across your face in seconds — a doctor-led guide to our Signature Pigmentation Removal Treatment at Harley Street Aesthetics. No pressure, just clarity."}
       </motion.p>
 
       <motion.div
@@ -60,6 +66,10 @@ export function HeroScreen() {
           <Dot />
           <span>Doctor-led</span>
         </div>
+        <p className="flex max-w-sm items-start justify-center gap-1.5 text-center text-xs leading-relaxed text-body/65">
+          <MapPin size={13} className="mt-0.5 shrink-0 text-peach" />
+          {clinic.lines.join(" · ")}
+        </p>
       </motion.div>
     </section>
   );

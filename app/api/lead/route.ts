@@ -92,6 +92,9 @@ export const leadRequestSchema = z
   .object({
     lead: leadSchema,
     result: resultSchema,
+    // Defaults preserve leads from browser tabs opened before location routing
+    // was deployed. Current clients always send the route's clinic explicitly.
+    clinicLocation: z.enum(["london", "glasgow"]).default("london"),
     // Optional only for a short migration window so an already-open version of
     // the previous checkbox-based client does not lose a submitted lead.
     imageProcessingConsent: z.literal(true).optional(),
@@ -227,6 +230,7 @@ export async function POST(request: Request): Promise<Response> {
     : undefined;
   const payload = buildGhlPayload(body.lead, body.result, {
     submittedAt,
+    clinicLocation: body.clinicLocation,
     imageProcessingConsent: true,
     imageProcessingConsentAt:
       body.imageProcessingConsentAt ?? submittedAt,

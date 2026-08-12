@@ -14,6 +14,7 @@ import { BookingCTA } from "@/components/result/BookingCTA";
 import { DisclaimerBanner } from "@/components/compliance/DisclaimerBanner";
 import { BUCKET_META, TREATMENT_CONCERNS } from "@/lib/constants";
 import { EASE } from "@/lib/motion";
+import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
 const reveal = (delay: number) => ({
   initial: { opacity: 0, y: 18 },
@@ -22,6 +23,7 @@ const reveal = (delay: number) => ({
 });
 
 export function ResultScreen() {
+  const clinic = useClinicLocation();
   const result = useWizard((s) => s.result);
   const imageBase64 = useWizard((s) => s.imageBase64);
   const imageMediaType = useWizard((s) => s.imageMediaType);
@@ -45,6 +47,7 @@ export function ResultScreen() {
         imageMediaType,
         landmarks,
         lead,
+        clinicLocation: clinic.key,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

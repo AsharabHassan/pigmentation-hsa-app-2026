@@ -1,8 +1,17 @@
+"use client";
+
 import { Phone, Mail, Clock, MessageCircle } from "lucide-react";
 import { CLINIC, DISCLAIMER } from "@/lib/constants";
 import { Logo } from "./Logo";
+import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
 export function ClinicFooter() {
+  const activeClinic = useClinicLocation();
+  const clinics = [
+    activeClinic,
+    ...CLINIC.locations.filter((clinic) => clinic.key !== activeClinic.key),
+  ];
+
   return (
     <footer className="mt-auto border-t border-peach/15 bg-ink px-6 py-12 text-white/80">
       <div className="mx-auto flex max-w-5xl flex-col gap-8 md:flex-row md:items-start md:justify-between">
@@ -15,7 +24,7 @@ export function ClinicFooter() {
 
         <div className="space-y-4 text-sm">
           <p className="font-serif text-base text-white">Our clinics</p>
-          {CLINIC.locations.map((loc) => (
+          {clinics.map((loc) => (
             <div key={loc.city} className="space-y-0.5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-peach">
                 {loc.city}
@@ -32,10 +41,10 @@ export function ClinicFooter() {
         <div className="space-y-2 text-sm">
           <p className="font-serif text-base text-white">Get in touch</p>
           <a
-            href={CLINIC.phoneHref}
+            href={activeClinic.phoneHref}
             className="flex items-center gap-2 text-white/80 transition hover:text-peach-light"
           >
-            <Phone size={14} /> {CLINIC.phone}
+            <Phone size={14} /> {activeClinic.phone}
           </a>
           <a
             href={CLINIC.whatsappHref}

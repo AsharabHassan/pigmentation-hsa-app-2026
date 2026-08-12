@@ -11,6 +11,9 @@ export default defineConfig({
     include: ["test/**/*.test.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": resolve(__dirname, ".") },
+    alias: {
+      "@": resolve(__dirname, "."),
+      "server-only": resolve(__dirname, "test/server-only.ts"),
+    },
   },
 });

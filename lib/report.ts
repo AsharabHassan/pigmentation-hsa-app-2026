@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnalyzeResult, Lead } from "./types";
+import type { AnalyzeResult, ClinicLocationKey, Lead } from "./types";
 import type { NormalizedPoint } from "@/components/scan/useFaceLandmarker";
 import {
   regionMarkers,
@@ -16,7 +16,7 @@ import { cropImage } from "./crop";
 import {
   BUCKET_META,
   CLINIC,
-  BOOKING_URL,
+  getClinicLocation,
   PRICE_GUIDE,
   DISCLAIMER,
 } from "./constants";
@@ -130,9 +130,18 @@ export async function generateReportPdf(opts: {
   imageMediaType: string;
   landmarks: NormalizedPoint[] | null;
   lead: Lead | null;
+  clinicLocation: ClinicLocationKey;
 }): Promise<Blob> {
-  const { result, imageBase64, imageMediaType, landmarks, lead } = opts;
+  const {
+    result,
+    imageBase64,
+    imageMediaType,
+    landmarks,
+    lead,
+    clinicLocation,
+  } = opts;
   const meta = BUCKET_META[result.bucket];
+  const clinic = getClinicLocation(clinicLocation);
 
   let faceImageDataUrl: string | null = null;
   let faceImageAspect: number | undefined;
@@ -179,7 +188,7 @@ export async function generateReportPdf(opts: {
   return buildReportPdf({
     clinicName: CLINIC.name,
     treatmentName: "Pigmentation Removal",
-    byline: CLINIC.byline,
+    byline: `${clinic.city} clinic`,
     mono: "H S A",
     palette: {
       bg: [9, 9, 9],
@@ -192,10 +201,10 @@ export async function generateReportPdf(opts: {
       line: [62, 57, 48],
       badgeText: [9, 9, 9],
     },
-    phone: CLINIC.phone,
+    phone: clinic.phone,
     email: CLINIC.email,
-    bookingUrl: BOOKING_URL.replace(/^https?:\/\//, ""),
-    addressLines: [...CLINIC.addressLines],
+    bookingUrl: clinic.bookingUrl.replace(/^https?:\/\//, ""),
+    addressLines: [...clinic.lines],
     preparedFor: lead?.firstName?.trim() || undefined,
     dateStr,
     verdictLabel: meta.label,

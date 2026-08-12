@@ -7,6 +7,9 @@
 /** The four suitability outcomes. Never a flat "you don't qualify". */
 export type Bucket = "great" | "good" | "consultation" | "alternative";
 
+/** Landing clinic selected by the campaign route. */
+export type ClinicLocationKey = "london" | "glasgow";
+
 /** Facial zones the pigmentation map can crop and score. */
 export type ZoneKey =
   | "forehead"
@@ -130,6 +133,8 @@ export interface ServerMetaConversion {
 export interface LeadRequest {
   lead: Lead;
   result: AnalyzeResult;
+  /** Clinic market selected by the landing route; defaults to London server-side. */
+  clinicLocation: ClinicLocationKey;
   /** Explicit statement confirmed by the camera/upload action. */
   imageProcessingConsent: boolean;
   /** Client-recorded time of the affirmative camera/upload action. */

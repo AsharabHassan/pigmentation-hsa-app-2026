@@ -34,6 +34,7 @@ function reportRequest(
       },
       suitabilityLabel: "Strong candidate",
       score: 88,
+      clinicLocation: "london",
       pdfBase64: PDF_BASE64,
       ...overrides,
     }),
@@ -66,6 +67,7 @@ describe("POST /api/report", () => {
     expect(input.subject).toContain("pigmentation analysis report");
     expect(input.emailHtml).toContain("Hi Jane");
     expect(input.fileName).toBe("Pigmentation-Analysis-Report-Jane.pdf");
+    expect(input.tags).toContain("hsa-clinic-london");
   });
 
   it("escapes the name so a crafted lead cannot inject HTML into the email", async () => {
@@ -82,6 +84,19 @@ describe("POST /api/report", () => {
     const { emailHtml } = deliverReportToGhl.mock.calls[0][0];
     expect(emailHtml).not.toContain("<img src=x");
     expect(emailHtml).toContain("&lt;img src=x");
+  });
+
+  it("uses the Glasgow clinic details for Glasgow campaign reports", async () => {
+    await POST(reportRequest({ clinicLocation: "glasgow" }));
+
+    const input = deliverReportToGhl.mock.calls[0][0];
+    expect(input.emailHtml).toContain("Harley Street Aesthetics Glasgow");
+    expect(input.emailHtml).toContain(
+      "https://harleystreetaesthetic.co.uk/glasgow/contact/",
+    );
+    expect(input.noteBody).toContain("Glasgow pigmentation analysis report");
+    expect(input.source).toBe("Pigmentation Analyzer · Glasgow");
+    expect(input.tags).toContain("hsa-clinic-glasgow");
   });
 
   it("skips delivery for a missing email or a non-PDF payload", async () => {
@@ -125,12 +140,12 @@ describe("same-origin report guard", () => {
     }
   });
 
-  it("allows a caller that sends no browser origin headers", () => {
+  it("rejects a caller that sends no browser origin headers", () => {
     expect(
       isSameOriginReportRequest(
         new Request(`${ORIGIN}/api/report`, { method: "POST" }),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("rejects a mismatched origin", () => {

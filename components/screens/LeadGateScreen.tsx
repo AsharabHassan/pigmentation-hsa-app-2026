@@ -14,10 +14,12 @@ import {
 import { getMetaAttribution } from "@/lib/meta-pixel";
 import { hasMetaTrackingConsent } from "@/lib/meta-consent";
 import type { Lead } from "@/lib/types";
+import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LeadGateScreen() {
+  const clinic = useClinicLocation();
   const imageBase64 = useWizard((s) => s.imageBase64);
   const imageMediaType = useWizard((s) => s.imageMediaType);
   const imageConsent = useWizard((s) => s.imageConsent);
@@ -78,6 +80,7 @@ export function LeadGateScreen() {
     void submitLead({
       lead,
       result,
+      clinicLocation: clinic.key,
       imageProcessingConsent: imageConsent,
       imageProcessingConsentAt:
         imageConsentAt ?? new Date().toISOString(),
@@ -92,6 +95,7 @@ export function LeadGateScreen() {
     void submitReportToGhl({
       result,
       lead,
+      clinicLocation: clinic.key,
       imageBase64,
       imageMediaType,
       landmarks,
@@ -116,7 +120,7 @@ export function LeadGateScreen() {
         </h2>
         <p className="mt-2 text-sm text-body">
           See your personalised pigmentation analysis. We&rsquo;ll email your
-          report and keep a copy on your record so our doctor-led team can
+          report and keep a copy on your record so our doctor-led {clinic.city} team can
           review it for your free online consultation.
         </p>
 

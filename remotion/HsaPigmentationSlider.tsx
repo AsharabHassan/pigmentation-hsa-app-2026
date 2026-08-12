@@ -14,6 +14,9 @@ import {
 export type HsaPigmentationSliderProps = {
   resultSrc: string;
   scoreSrc: string;
+  openingLabel?: string;
+  ctaBrand?: string;
+  ctaAddress?: string;
 };
 
 const GOLD = '#D4AF37';
@@ -61,6 +64,49 @@ const HsaMark = ({large = false}: {large?: boolean}) => (
         fontSize: large ? 22 : 12,
         fontWeight: 700,
         letterSpacing: large ? 7 : 3.6,
+      }}
+    >
+      HARLEY STREET AESTHETICS
+    </div>
+  </div>
+);
+
+const HsaLocationMark = ({brand}: {brand: string}) => (
+  <div
+    style={{
+      alignItems: 'center',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 13,
+    }}
+  >
+    <div
+      style={{
+        color: GOLD,
+        fontFamily: 'Georgia, Times New Roman, serif',
+        fontSize: 74,
+        letterSpacing: 12,
+        lineHeight: 0.95,
+        marginLeft: 12,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {brand}
+    </div>
+    <div
+      style={{
+        background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)`,
+        height: 1,
+        width: 520,
+      }}
+    />
+    <div
+      style={{
+        color: COPY,
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontSize: 20,
+        fontWeight: 700,
+        letterSpacing: 6.4,
       }}
     >
       HARLEY STREET AESTHETICS
@@ -231,8 +277,9 @@ const ComparisonSlider = ({resultSrc}: {resultSrc: string}) => {
   );
 };
 
-const Header = () => {
+const Header = ({openingLabel}: {openingLabel: string}) => {
   const frame = useCurrentFrame();
+  const isLocalised = openingLabel.length > 30;
   const opacity = interpolate(frame, [0, 15, 294, 324], [0, 1, 1, 0], {
     easing: easeOut,
     ...clamp,
@@ -248,7 +295,7 @@ const Header = () => {
         opacity,
         position: 'absolute',
         right: 80,
-        top: 70,
+        top: isLocalised ? 104 : 70,
       }}
     >
       <HsaMark />
@@ -258,13 +305,14 @@ const Header = () => {
           borderRadius: 999,
           color: PALE_GOLD,
           fontFamily: 'Arial, Helvetica, sans-serif',
-          fontSize: 23,
+          fontSize: isLocalised ? 18 : 23,
           fontWeight: 800,
-          letterSpacing: 4,
-          padding: '12px 18px 13px',
+          letterSpacing: isLocalised ? 2.4 : 4,
+          padding: isLocalised ? '13px 16px 14px' : '12px 18px 13px',
+          whiteSpace: 'nowrap',
         }}
       >
-        OFFICIAL HSA GALLERY RESULT
+        {openingLabel}
       </div>
     </div>
   );
@@ -418,10 +466,19 @@ const Qualification = () => {
   );
 };
 
-const CtaScene = ({resultSrc}: {resultSrc: string}) => {
+const CtaScene = ({
+  resultSrc,
+  ctaBrand,
+  ctaAddress,
+}: {
+  resultSrc: string;
+  ctaBrand?: string;
+  ctaAddress?: string;
+}) => {
   const frame = useCurrentFrame();
   const enter = interpolate(frame, [0, 30], [0, 1], {easing: easeOut, ...clamp});
   const buttonPulse = 1 + 0.025 * Math.sin(Math.max(0, frame - 48) / 7);
+  const isLocalised = Boolean(ctaBrand && ctaAddress);
 
   return (
     <AbsoluteFill
@@ -464,35 +521,64 @@ const CtaScene = ({resultSrc}: {resultSrc: string}) => {
           width: '100%',
         }}
       >
-        <HsaMark large />
+        {ctaBrand ? <HsaLocationMark brand={ctaBrand} /> : <HsaMark large />}
         <div
           style={{
             color: COPY,
             fontFamily: 'Georgia, Times New Roman, serif',
-            fontSize: 67,
+            fontSize: isLocalised ? 65 : 67,
             letterSpacing: -1.2,
-            lineHeight: 1.01,
+            lineHeight: isLocalised ? 1.08 : 1.01,
             marginTop: 28,
           }}
         >
-          See where pigmentation
-          <br />
-          <span style={{color: PALE_GOLD, fontStyle: 'italic'}}>needs attention.</span>
+          {isLocalised ? (
+            <>
+              Upload a selfie. Get your report.
+              <br />
+              <span style={{color: PALE_GOLD}}>Book a free online consultation.</span>
+            </>
+          ) : (
+            <>
+              See where pigmentation
+              <br />
+              <span style={{color: PALE_GOLD, fontStyle: 'italic'}}>needs attention.</span>
+            </>
+          )}
         </div>
-        <div
-          style={{
-            color: COPY,
-            fontFamily: 'Arial, Helvetica, sans-serif',
-            fontSize: 33,
-            fontWeight: 740,
-            lineHeight: 1.35,
-            maxWidth: 860,
-          }}
-        >
-          Upload a selfie. Get your report.
-          <br />
-          Book a free online consultation.
-        </div>
+        {isLocalised ? (
+          <div
+            style={{
+              borderBottom: '1px solid rgba(212,175,55,0.46)',
+              borderTop: '1px solid rgba(212,175,55,0.46)',
+              color: COPY,
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              fontSize: 27,
+              fontWeight: 720,
+              letterSpacing: 1.25,
+              lineHeight: 1.35,
+              maxWidth: 880,
+              padding: '17px 22px 18px',
+            }}
+          >
+            {ctaAddress}
+          </div>
+        ) : (
+          <div
+            style={{
+              color: COPY,
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              fontSize: 33,
+              fontWeight: 740,
+              lineHeight: 1.35,
+              maxWidth: 860,
+            }}
+          >
+            Upload a selfie. Get your report.
+            <br />
+            Book a free online consultation.
+          </div>
+        )}
         <div
           style={{
             background: PALE_GOLD,
@@ -514,7 +600,7 @@ const CtaScene = ({resultSrc}: {resultSrc: string}) => {
       </div>
       <div
         style={{
-          bottom: 82,
+          bottom: isLocalised ? 126 : 82,
           color: 'rgba(255,249,237,0.72)',
           fontFamily: 'Arial, Helvetica, sans-serif',
           fontSize: 20,
@@ -536,6 +622,9 @@ const CtaScene = ({resultSrc}: {resultSrc: string}) => {
 export const HsaPigmentationSlider = ({
   resultSrc,
   scoreSrc,
+  openingLabel = 'OFFICIAL HSA GALLERY RESULT',
+  ctaBrand,
+  ctaAddress,
 }: HsaPigmentationSliderProps) => {
   const {durationInFrames} = useVideoConfig();
 
@@ -547,14 +636,14 @@ export const HsaPigmentationSlider = ({
       }}
     >
       <Sequence from={0} durationInFrames={335}>
-        <Header />
+        <Header openingLabel={openingLabel} />
         <HookCopy />
         <ComparisonSlider resultSrc={resultSrc} />
         <ProtocolCopy />
         <Qualification />
       </Sequence>
       <Sequence from={300} durationInFrames={Math.max(1, durationInFrames - 300)}>
-        <CtaScene resultSrc={resultSrc} />
+        <CtaScene resultSrc={resultSrc} ctaBrand={ctaBrand} ctaAddress={ctaAddress} />
       </Sequence>
 
       <Audio

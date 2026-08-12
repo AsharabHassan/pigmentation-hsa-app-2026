@@ -45,6 +45,7 @@ const result: AnalyzeResult = {
 function buildOptions(overrides: Record<string, unknown> = {}) {
   return {
     submittedAt: "2026-06-04T10:00:00.000Z",
+    clinicLocation: "london" as const,
     imageProcessingConsent: true,
     imageProcessingConsentAt: "2026-06-04T09:55:00.000Z",
     metaTrackingConsent: false,
@@ -61,6 +62,9 @@ describe("buildGhlPayload", () => {
       name: "Jane Doe",
       email: "jane@example.com",
       phone: "07700900123",
+      clinicLocation: "london",
+      clinicLocationLabel: "London",
+      clinicAddress: "10 Harley Street, London W1G 9PF",
       suitabilityBucket: "great",
       suitabilityLabel: "Strong candidate",
       suitabilityScore: 88,
@@ -76,6 +80,7 @@ describe("buildGhlPayload", () => {
         "pigmentation-analyzer",
         "hsa-pigmentation-lead",
         "hsa-source-pigmentation-app",
+        "hsa-clinic-london",
         "pigmentation-great",
         "hsa-meta-consent-declined",
       ]),
@@ -95,6 +100,38 @@ describe("buildGhlPayload", () => {
     expect(payload.tags).not.toEqual(
       expect.arrayContaining(["hsa-marketing-opt-in", "hsa-marketing-opt-out"]),
     );
+  });
+
+  it("identifies Glasgow leads without changing the Meta conversion", () => {
+    const meta = createServerMetaConversion({
+      lead,
+      attribution: {
+        fbp: null,
+        fbc: null,
+        eventSourceUrl:
+          "https://pigmentation.harleystreetaesthetic.co.uk/glasgow?utm_campaign=glasgow",
+      },
+      eventId: "glasgow-lead",
+      eventTime: 123,
+    });
+    const payload = buildGhlPayload(
+      lead,
+      result,
+      buildOptions({ clinicLocation: "glasgow", metaTrackingConsent: true, meta }),
+    );
+
+    expect(payload).toMatchObject({
+      source: "Pigmentation Analyzer",
+      clinicLocation: "glasgow",
+      clinicLocationLabel: "Glasgow",
+      clinicAddress:
+        "5th Floor, Ingram House, 227 Ingram Street, Glasgow G1 1DA",
+      metaDatasetId: "1849043682301992",
+      metaEventName: "Lead",
+      metaEventSourceUrl:
+        "https://pigmentation.harleystreetaesthetic.co.uk/glasgow",
+    });
+    expect(payload.tags).toContain("hsa-clinic-glasgow");
   });
 
   it("adds only the allow-listed server event when Meta consent is true", () => {
@@ -221,6 +258,7 @@ describe("lead request validation", () => {
   const valid = {
     lead,
     result,
+    clinicLocation: "glasgow",
     imageProcessingConsent: true,
     imageProcessingConsentAt: "2026-07-24T12:00:00.000Z",
     metaTrackingConsent: true,
@@ -233,6 +271,23 @@ describe("lead request validation", () => {
 
   it("accepts the explicit consent and attribution shape", () => {
     expect(leadRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("defaults an already-open pre-location client to London", () => {
+    const withoutLocation = { ...valid };
+    delete (withoutLocation as Partial<typeof valid>).clinicLocation;
+    const parsed = leadRequestSchema.safeParse(withoutLocation);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.clinicLocation).toBe("london");
+  });
+
+  it("rejects an unknown clinic location", () => {
+    expect(
+      leadRequestSchema.safeParse({
+        ...valid,
+        clinicLocation: "edinburgh",
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts a legacy checkbox client that predates the audit fields", () => {

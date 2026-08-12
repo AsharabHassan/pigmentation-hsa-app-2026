@@ -13,6 +13,11 @@ import { ScanScreen } from "@/components/screens/ScanScreen";
 import { RetakeScreen } from "@/components/screens/RetakeScreen";
 import { LeadGateScreen } from "@/components/screens/LeadGateScreen";
 import { ResultScreen } from "@/components/screens/ResultScreen";
+import {
+  ClinicLocationProvider,
+  useClinicLocation,
+} from "@/components/clinic/ClinicLocationContext";
+import type { ClinicLocationKey } from "@/lib/constants";
 
 const SCREENS = {
   hero: HeroScreen,
@@ -23,13 +28,25 @@ const SCREENS = {
   result: ResultScreen,
 } as const;
 
-export function WizardShell() {
+export function WizardShell({
+  clinicLocation = "london",
+}: {
+  clinicLocation?: ClinicLocationKey;
+}) {
+  return (
+    <ClinicLocationProvider location={clinicLocation}>
+      <WizardJourney />
+    </ClinicLocationProvider>
+  );
+}
+
+function WizardJourney() {
   const step = useWizard((s) => s.step);
   const Screen = SCREENS[step];
   const showFooter = step === "hero" || step === "result";
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col overflow-x-hidden">
       <AmbientBackground />
       <CinematicHeader hero={step === "hero"} step={step} />
 
@@ -53,6 +70,8 @@ function CinematicHeader({
   hero: boolean;
   step: ReturnType<typeof useWizard.getState>["step"];
 }) {
+  const clinic = useClinicLocation();
+
   return (
     <motion.header
       initial={{ y: -24, opacity: 0 }}
@@ -77,7 +96,7 @@ function CinematicHeader({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-peach-deep/60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-peach-deep" />
               </span>
-              AI Analysis · Harley Street
+              AI Analysis · {clinic.city}
             </div>
           ) : (
             <ProgressRail step={step} />
