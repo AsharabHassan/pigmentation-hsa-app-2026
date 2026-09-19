@@ -7,7 +7,7 @@ import type { InsightEventType, VisitContext } from "./insights";
 
 export function getVisitContext(clinicLocation: ClinicLocationKey): VisitContext {
   if (typeof window === "undefined") {
-    return { clinicLocation, fromMetaAd: false };
+    return { clinicLocation, fromMetaAd: false, fromGoogleAd: false };
   }
   const params = new URLSearchParams(window.location.search);
   const tag = (name: string) => params.get(name)?.trim().slice(0, 200) || null;
@@ -29,7 +29,14 @@ export function getVisitContext(clinicLocation: ClinicLocationKey): VisitContext
     fromMetaAd:
       params.has("fbclid") ||
       /^(fb|facebook|ig|instagram|meta)$/i.test(utmSource ?? ""),
-    landingPath: window.location.pathname.slice(0, 200),
+    fromGoogleAd:
+      params.has("gclid") ||
+      params.has("gbraid") ||
+      params.has("wbraid") ||
+      /^(google|adwords)$/i.test(utmSource ?? ""),
+    // An ads landing page hands its id on as ?lp=, so the visit is credited to
+    // the page that won the click rather than to the analyzer route.
+    landingPath: (tag("lp") ?? window.location.pathname).slice(0, 200),
     referrerHost,
   };
 }

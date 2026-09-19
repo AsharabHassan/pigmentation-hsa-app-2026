@@ -91,3 +91,13 @@ h4 {
     scroll-behavior: auto !important;
   }
 }
+
+/* Landing-page hero: slow scan sweep over the sample report. */
+@keyframes lp-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(420%); }
+}
+.lp-scanline { animation: lp-scan 3.6s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-scanline { animation: none; opacity: 0; }
+}

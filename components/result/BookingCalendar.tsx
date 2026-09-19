@@ -45,7 +45,7 @@ export function scrollToBooking(): void {
  * Bookings reach the insights database through the GHL workflow webhook
  * (/api/booking), not through this component.
  */
-export function BookingCalendar() {
+export function BookingCalendar({ points: customPoints }: { points?: string[] } = {}) {
   const clinic = useClinicLocation();
   const lead = useWizard((s) => s.lead);
   const result = useWizard((s) => s.result);
@@ -121,7 +121,7 @@ export function BookingCalendar() {
 
   const top = result ? topZone(result) : null;
   const focus = top ? AREA_LABELS[top.zone] : null;
-  const points = [
+  const points = customPoints ?? [
     focus
       ? `A practitioner reviews your report before the call, starting with your ${focus}`
       : "A practitioner reviews your report before the call",
