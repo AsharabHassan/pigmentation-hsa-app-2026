@@ -61,6 +61,8 @@ export interface AnalyzeResult extends ScoreResult {
   zoneImprovement: Record<string, number>;
   /** False when the whole face isn't clearly visible and evenly lit — prompt a retake. */
   framingAdequate: boolean;
+  /** Insights-database id for this analysis; ties the lead, clicks and booking to it. */
+  analysisId?: string;
 }
 
 /** Lead captured at the gate. */
@@ -77,6 +79,8 @@ export interface AnalyzeRequest {
   imageMediaType?: "image/jpeg" | "image/png" | "image/webp";
   /** Explicit consent to process the face image. Required when imageBase64 present. */
   imageConsent: boolean;
+  /** First-party visit context (clinic route + campaign tags) for the insights database. */
+  context?: import("./insights").VisitContext;
 }
 
 /** Claude's raw assessment of the photo: a cosmetic suitability read + narrative. */

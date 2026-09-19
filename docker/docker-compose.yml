@@ -1,0 +1,37 @@
+# Postgres for the HSA pigmentation analyzer insights database.
+#
+#   cp .env.example .env   # set a long random POSTGRES_PASSWORD
+#   docker compose up -d
+#
+# The app creates its own tables on first use. The only init script makes the
+# server refuse unencrypted remote connections (init/010-require-tls.sh).
+# TLS is on (the image's built-in self-signed certificate) so the connection
+# from Vercel is encrypted; connect with `?sslmode=require`.
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hsa_insights
+      POSTGRES_USER: hsa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in docker/.env}
+    command: >
+      postgres
+      -c ssl=on
+      -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+      -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+      -c password_encryption=scram-sha-256
+      -c max_connections=60
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - hsa_insights_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hsa -d hsa_insights"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  hsa_insights_data:

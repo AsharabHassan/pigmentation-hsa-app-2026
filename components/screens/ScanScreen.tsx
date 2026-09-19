@@ -10,6 +10,8 @@ import {
 import { FaceMeshOverlay } from "@/components/scan/FaceMeshOverlay";
 import { useDevelopmentScanRecorder } from "@/components/scan/useDevelopmentScanRecorder";
 import { requestAnalysis } from "@/lib/api-client";
+import { getVisitContext } from "@/lib/visit-context";
+import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
 const STATUS = [
   "Mapping facial structure",
@@ -19,6 +21,7 @@ const STATUS = [
 ];
 
 export function ScanScreen() {
+  const clinicKey = useClinicLocation().key;
   const imageBase64 = useWizard((s) => s.imageBase64);
   const imageMediaType = useWizard((s) => s.imageMediaType);
   const imageConsent = useWizard((s) => s.imageConsent);
@@ -71,10 +74,13 @@ export function ScanScreen() {
   useEffect(() => {
     if (startedRef.current || result) return;
     startedRef.current = true;
-    requestAnalysis({ imageBase64, imageMediaType, imageConsent }).then(
-      setResult,
-    );
-  }, [imageBase64, imageMediaType, imageConsent, setResult, result]);
+    requestAnalysis({
+      imageBase64,
+      imageMediaType,
+      imageConsent,
+      context: getVisitContext(clinicKey),
+    }).then(setResult);
+  }, [imageBase64, imageMediaType, imageConsent, setResult, result, clinicKey]);
 
   // Cycle status lines and mark the minimum animation time as elapsed.
   useEffect(() => {

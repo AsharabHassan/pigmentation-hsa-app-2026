@@ -65,6 +65,9 @@ function initials(name: string): string {
 }
 
 export function Testimonials() {
+  // Sample copy must never reach a visitor as if it were patient feedback.
+  if (TESTIMONIALS.some((t) => t.name === "Sample Review")) return null;
+
   return (
     <div>
       <h3 className="text-center font-serif text-xl text-heading">

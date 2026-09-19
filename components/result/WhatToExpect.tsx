@@ -1,8 +1,13 @@
 "use client";
 
 import { motion } from "motion/react";
-import { BadgePoundSterling } from "lucide-react";
-import { PRICE_GUIDE, PROTOCOL_STEPS, PROTOCOL_SUPPORT } from "@/lib/constants";
+import { BadgePoundSterling, Repeat } from "lucide-react";
+import {
+  PRICE_GUIDE,
+  PROTOCOL_STEPS,
+  PROTOCOL_SUPPORT,
+  SESSIONS_GUIDE,
+} from "@/lib/constants";
 
 export function WhatToExpect() {
   return (
@@ -28,7 +33,16 @@ export function WhatToExpect() {
       <p className="mt-3 text-[13px] leading-relaxed text-body/80">
         {PROTOCOL_SUPPORT}
       </p>
-      <p className="mt-4 flex items-center gap-2 text-sm text-body">
+      <p className="mt-4 flex items-start gap-2 text-sm text-body">
+        <Repeat size={16} className="mt-0.5 shrink-0 text-sage-deep" />
+        <span>
+          <span className="font-semibold text-heading">
+            A course of {SESSIONS_GUIDE.minimum}+ sessions.
+          </span>{" "}
+          <span className="text-body/70">{SESSIONS_GUIDE.note}</span>
+        </span>
+      </p>
+      <p className="mt-2 flex items-center gap-2 text-sm text-body">
         <BadgePoundSterling size={16} className="text-sage-deep" />
         <span>
           Pigmentation removal at Harley Street Aesthetics from{" "}

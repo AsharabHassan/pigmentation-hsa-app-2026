@@ -73,7 +73,7 @@ export function BeforeAfterSlider({
         {/* AFTER — base layer (full width) */}
         <img
           src={afterSrc}
-          alt={`${area} after pigmentation treatment at Harley Street Aesthetics`}
+          alt={`${area} after pigmentation treatment`}
           draggable={false}
           loading="lazy"
           className="absolute inset-0 h-full w-full object-contain"
@@ -86,7 +86,7 @@ export function BeforeAfterSlider({
         >
           <img
             src={beforeSrc}
-            alt={`${area} before pigmentation treatment at Harley Street Aesthetics`}
+            alt={`${area} before pigmentation treatment`}
             draggable={false}
             loading="lazy"
             className="absolute inset-0 h-full w-full object-contain"
@@ -94,10 +94,10 @@ export function BeforeAfterSlider({
         </div>
 
         {/* Corner labels */}
-        <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white backdrop-blur-sm">
+        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] sm:left-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[11px] sm:tracking-[0.14em] text-white backdrop-blur-sm">
           Before
         </span>
-        <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-peach-deep/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white backdrop-blur-sm">
+        <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-peach-deep/80 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] sm:right-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[11px] sm:tracking-[0.14em] text-white backdrop-blur-sm">
           After
         </span>
 

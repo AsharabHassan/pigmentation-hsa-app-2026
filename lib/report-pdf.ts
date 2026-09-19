@@ -60,6 +60,8 @@ export interface ReportInput {
   areas: ReportArea[];
   priceFrom: string;
   priceNote: string;
+  /** "Spread the cost" illustration rows + its small print. */
+  finance?: { heading: string; rows: { name: string; detail: string }[]; note: string };
   disclaimer: string;
 }
 
@@ -426,6 +428,39 @@ export function buildReportPdf(input: ReportInput): Blob {
   doc.text(pn, M, y + 5);
   y += 5 + pn.length * 4 + 6;
 
+  // ── Spread the cost ──────────────────────────────────────────────────────
+  if (input.finance) {
+    const fin = input.finance;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.6);
+    const note = doc.splitTextToSize(fin.note, CW - 14);
+    const panelH = 13 + fin.rows.length * 6.5 + note.length * 2.9 + 4;
+    ensure(panelH + 6);
+    doc.setFillColor(...P.panel);
+    doc.setDrawColor(...P.line);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(M, y, CW, panelH, 2.5, 2.5, "FD");
+    doc.setFont("times", "normal");
+    doc.setFontSize(12);
+    doc.setTextColor(...P.goldLt);
+    doc.text(fin.heading, M + 7, y + 8);
+    let fy = y + 15;
+    for (const row of fin.rows) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...P.heading);
+      doc.text(row.name, M + 7, fy);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...P.body);
+      doc.text(row.detail, M + 42, fy);
+      fy += 6.5;
+    }
+    doc.setFontSize(6.6);
+    doc.setTextColor(...P.faint);
+    doc.text(note, M + 7, fy + 0.5);
+    y += panelH + 7;
+  }
+
   ensure(20);
   doc.setFillColor(...P.panel);
   doc.setDrawColor(...P.gold);
@@ -439,6 +474,8 @@ export function buildReportPdf(input: ReportInput): Blob {
   doc.setFontSize(8.5);
   doc.setTextColor(...P.body);
   doc.text(`${input.bookingUrl}   ·   ${input.phone}`, M + 7, y + 12.5);
+  // The whole panel is tappable — a printed URL nobody retypes books nobody.
+  doc.link(M, y, CW, 17, { url: `https://${input.bookingUrl}` });
 
   footer();
   return doc.output("blob");

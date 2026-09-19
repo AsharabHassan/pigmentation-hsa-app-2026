@@ -1,6 +1,6 @@
 # AI Pigmentation Analyzer · Harley Street Aesthetics
 
-A cinematic, standalone web-app lead magnet for **Harley Street Aesthetics** (London & Glasgow). A visitor takes a selfie, our AI maps the dark spots and uneven tone across their face, and they receive a personalised pigmentation analysis presenting the clinic's **Signature Pigmentation Removal Treatment** (VirtueRF Pulsed Mode + Exosome Therapy + Mesotherapy, from £399) as the solution. Qualified leads flow into **GoHighLevel** for AI sales-agent follow-up. Primary CTA: **Book Your Free Online Consultation**.
+A cinematic, standalone web-app lead magnet for **Harley Street Aesthetics** (London & Glasgow). A visitor takes a selfie, our AI maps the dark spots and uneven tone across their face, and they receive a personalised pigmentation analysis presenting the clinic's **Signature Pigmentation Removal Treatment** (VirtueRF Microneedling + Laser + Mesotherapy, minimum 2 sessions, from £399 per session) as the solution. Qualified leads flow into **GoHighLevel** for AI sales-agent follow-up. Primary CTA: **Book Your Free Online Consultation**.
 
 > The tool is a **cosmetic, informational pre-consultation guide — not a medical assessment or diagnosis.** It never names or diagnoses skin conditions; suitability is always confirmed by a practitioner.
 
@@ -49,8 +49,65 @@ npm run dev                         # http://localhost:3000
 | `GHL_REPORT_FIELD_KEY` | server (optional) | GHL custom field that receives the hosted report URL (defaults to `facial_app_report_pdf`) |
 | `NEXT_PUBLIC_BOOKING_URL` | public | London free online consultation link |
 | `NEXT_PUBLIC_GLASGOW_BOOKING_URL` | public | Glasgow free online consultation link |
+| `NEXT_PUBLIC_BOOKING_CALENDAR_URL` | public | GHL calendar embedded on the result page |
+| `DATABASE_URL` | server (optional) | Docker Postgres for booking insights |
+| `BOOKING_WEBHOOK_SECRET` | server (optional) | authenticates the GHL booking webhook |
+| `ADMIN_PASSWORD` | server (optional) | unlocks `/admin` (12+ characters) |
 | `NEXT_PUBLIC_SITE_URL` | public | canonical / OG URL |
 | `NEXT_PUBLIC_META_PIXEL_ID` | public | Meta dataset/pixel used by the campaign |
+
+## Booking insights database
+
+Every analysis is recorded in a self-hosted **Docker Postgres** so the clinic can
+see who books a consultation and what they have in common. It stores the written
+outcome (verdict, score, per-zone figures, narrative), the contact details the
+visitor submitted, the campaign tags from the landing URL, what they tapped on
+the result page, and the GoHighLevel booking. **It never stores the photo, face
+landmarks or crops**, and no ad-platform identifier.
+
+It is optional and fail-safe: with `DATABASE_URL` unset nothing is recorded, and a
+database outage never blocks a result or a lead (writes are logged and dropped).
+
+**1. Run the database on the VPS**
+```bash
+cd docker && cp .env.example .env     # set a long random POSTGRES_PASSWORD
+docker compose up -d
+```
+Open the chosen port in the VPS firewall. Vercel has no fixed IPs, so the port is
+internet-facing: the long password and TLS (on by default in the compose file)
+are what protect it. Back it up — `docker compose exec db pg_dump -U hsa hsa_insights > backup.sql` on a cron.
+The app creates its tables itself on first use.
+
+**2. Set in Vercel:** `DATABASE_URL`, `BOOKING_WEBHOOK_SECRET`, `ADMIN_PASSWORD`.
+
+**3. Tell the app about bookings (GoHighLevel workflow)**
+Trigger: *Customer Booked Appointment* (add *Appointment Status* too, to catch
+cancellations / no-shows), filtered to the consultation calendar.
+Action: *Custom Webhook* → `POST https://pigmentation.harleystreetaesthetic.co.uk/api/booking`,
+header `x-hsa-secret: <BOOKING_WEBHOOK_SECRET>`, JSON body:
+```json
+{
+  "email": "{{contact.email}}",
+  "phone": "{{contact.phone}}",
+  "name": "{{contact.name}}",
+  "appointmentId": "{{appointment.id}}",
+  "status": "{{appointment.status}}",
+  "startTime": "{{appointment.start_time}}",
+  "calendar": "{{appointment.title}}"
+}
+```
+Bookings are matched to the most recent analysis with the same email **or** phone
+(last 10 digits, so format differences don't matter). Bookings from people who
+never used the analyzer are kept and counted separately.
+
+**4. Read it:** `https://…/admin` (any username + `ADMIN_PASSWORD`) — funnel,
+booking rate by verdict / score / main concern zone / campaign / creative /
+device / time of day, automatic "what stands out" takeaways once there is enough
+data, and the list of people with their booking status.
+
+The result page embeds the GHL calendar (`NEXT_PUBLIC_BOOKING_CALENDAR_URL`) with
+first name, last name, email and phone passed as `first_name`, `last_name`,
+`email`, `phone` query parameters.
 
 ## Tests & build
 ```bash

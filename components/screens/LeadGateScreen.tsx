@@ -13,6 +13,7 @@ import {
 } from "@/lib/api-client";
 import { getMetaAttribution } from "@/lib/meta-pixel";
 import { hasMetaTrackingConsent } from "@/lib/meta-consent";
+import { getVisitContext } from "@/lib/visit-context";
 import type { Lead } from "@/lib/types";
 import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
@@ -71,6 +72,7 @@ export function LeadGateScreen() {
         imageBase64,
         imageMediaType,
         imageConsent,
+        context: getVisitContext(clinic.key),
       });
       setResult(result);
     }

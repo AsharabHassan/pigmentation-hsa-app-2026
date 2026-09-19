@@ -6,6 +6,7 @@ import {
 } from "@/lib/ghl";
 import { serverEnv } from "@/lib/env";
 import { ensureLeadRoutingInGhl } from "@/lib/ghl-contact";
+import { attachLead } from "@/lib/insights-store";
 import type { Lead } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -78,6 +79,7 @@ const resultSchema = z
       z.number().finite().min(0).max(100),
     ),
     framingAdequate: z.boolean(),
+    analysisId: z.string().uuid().optional(),
   })
   .strict();
 
@@ -260,6 +262,9 @@ export async function POST(request: Request): Promise<Response> {
   const [delivery, routing] = await Promise.all([
     deliveryPromise,
     routingPromise,
+    body.result.analysisId
+      ? attachLead(body.result.analysisId, body.lead)
+      : Promise.resolve(null),
   ]);
 
   const trackingQueued = Boolean(meta && delivery.delivered);

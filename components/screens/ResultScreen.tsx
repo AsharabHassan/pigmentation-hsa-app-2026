@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, Info, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWizard } from "@/store/wizard-store";
@@ -10,7 +10,10 @@ import { FaceConcernMap } from "@/components/result/FaceConcernMap";
 import { WhatToExpect } from "@/components/result/WhatToExpect";
 import { ResultsGallery } from "@/components/result/ResultsGallery";
 import { Testimonials } from "@/components/result/Testimonials";
-import { BookingCTA } from "@/components/result/BookingCTA";
+import { BookingCTA, StickyBookingBar } from "@/components/result/BookingCTA";
+import { BookingCalendar } from "@/components/result/BookingCalendar";
+import { FinanceCalculator } from "@/components/result/FinanceCalculator";
+import { trackInsight } from "@/lib/visit-context";
 import { DisclaimerBanner } from "@/components/compliance/DisclaimerBanner";
 import { BUCKET_META, TREATMENT_CONCERNS } from "@/lib/constants";
 import { EASE } from "@/lib/motion";
@@ -30,6 +33,11 @@ export function ResultScreen() {
   const landmarks = useWizard((s) => s.landmarks);
   const lead = useWizard((s) => s.lead);
   const [downloading, setDownloading] = useState(false);
+  const analysisId = result?.analysisId;
+
+  useEffect(() => {
+    trackInsight(analysisId, "result_viewed");
+  }, [analysisId]);
 
   if (!result) return null;
 
@@ -38,6 +46,7 @@ export function ResultScreen() {
 
   async function downloadReport() {
     if (!result) return;
+    trackInsight(analysisId, "report_download");
     setDownloading(true);
     try {
       const { generateReportPdf } = await import("@/lib/report");
@@ -70,7 +79,7 @@ export function ResultScreen() {
       : (TREATMENT_CONCERNS as readonly string[]);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-6 py-10">
+    <div className="mx-auto w-full max-w-2xl px-6 pb-28 pt-10 sm:pb-10">
       <motion.div {...reveal(0)} className="flex flex-col items-center text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-peach/30 bg-peach/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-peach">
           <Sparkles size={13} /> {meta.label}
@@ -86,6 +95,10 @@ export function ResultScreen() {
           accent={meta.accent}
           label={meta.label}
         />
+      </motion.div>
+
+      <motion.div {...reveal(0.4)} className="mt-8">
+        <BookingCTA label={meta.ctaLabel} placement="top" showPhone={false} />
       </motion.div>
 
       <motion.div
@@ -150,8 +163,16 @@ export function ResultScreen() {
         <FaceConcernMap />
       </motion.div>
 
+      <motion.div {...reveal(0.65)} className="mt-10">
+        <BookingCalendar />
+      </motion.div>
+
       <motion.div {...reveal(0.7)} className="mt-8">
         <WhatToExpect />
+      </motion.div>
+
+      <motion.div {...reveal(0.75)} className="mt-8">
+        <FinanceCalculator />
       </motion.div>
 
       <motion.div {...reveal(0.8)} className="mt-10">
@@ -163,7 +184,7 @@ export function ResultScreen() {
       </motion.div>
 
       <motion.div {...reveal(1)} className="mt-10">
-        <BookingCTA label={meta.ctaLabel} />
+        <BookingCTA label={meta.ctaLabel} placement="bottom" />
       </motion.div>
 
       <motion.div {...reveal(1.05)} className="mt-4 flex justify-center">
@@ -188,6 +209,8 @@ export function ResultScreen() {
       <motion.div {...reveal(1.1)}>
         <DisclaimerBanner className="mt-8" />
       </motion.div>
+
+      <StickyBookingBar label={meta.ctaLabel} />
     </div>
   );
 }

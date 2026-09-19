@@ -342,7 +342,7 @@ export const REGION_COPY: Record<RegionKey, { title: string; blurb: string }> = 
   forehead: {
     title: "Your forehead",
     blurb:
-      "VirtueRF's pulsed energy helps break down sun-related spots and darker patches across the forehead, while exosomes support renewal for a brighter, more even canvas.",
+      "VirtueRF's pulsed energy helps break down sun-related spots and darker patches across the forehead, while targeted laser work helps clear what remains for a brighter, more even canvas.",
   },
   undereye: {
     title: "Your under-eye area",
@@ -357,7 +357,7 @@ export const REGION_COPY: Record<RegionKey, { title: string; blurb: string }> = 
   cheeks: {
     title: "Your cheeks",
     blurb:
-      "The cheeks are where uneven patches show most. VirtueRF works on the excess pigment while exosomes calm and renew, softening patchiness into a smoother, more uniform tone.",
+      "The cheeks are where uneven patches show most. VirtueRF microneedling and laser work on the excess pigment while mesotherapy brightens, softening patchiness into a smoother, more uniform tone.",
   },
   upperlip: {
     title: "Your upper lip",

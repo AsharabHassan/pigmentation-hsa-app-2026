@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  FINANCE_DISCLAIMER,
+  MIN_SESSIONS,
+  courseTotal,
+  financePlan,
+  formatPounds,
+} from "./finance";
 import type { AnalyzeResult, ClinicLocationKey, Lead } from "./types";
 import type { NormalizedPoint } from "@/components/scan/useFaceLandmarker";
 import {
@@ -18,6 +25,7 @@ import {
   CLINIC,
   getClinicLocation,
   PRICE_GUIDE,
+  SESSIONS_GUIDE,
   DISCLAIMER,
 } from "./constants";
 import { buildReportPdf, type ReportArea } from "./report-pdf";
@@ -179,6 +187,8 @@ export async function generateReportPdf(opts: {
     );
   }
 
+  const financeTotal = courseTotal(MIN_SESSIONS);
+
   const dateStr = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
@@ -203,7 +213,7 @@ export async function generateReportPdf(opts: {
     },
     phone: clinic.phone,
     email: CLINIC.email,
-    bookingUrl: clinic.bookingUrl.replace(/^https?:\/\//, ""),
+    bookingUrl: clinic.calendarUrl.replace(/^https?:\/\//, ""),
     addressLines: [...clinic.lines],
     preparedFor: lead?.firstName?.trim() || undefined,
     dateStr,
@@ -219,7 +229,25 @@ export async function generateReportPdf(opts: {
     faceImageAspect,
     areas,
     priceFrom: PRICE_GUIDE.from,
-    priceNote: PRICE_GUIDE.note,
+    priceNote: `${SESSIONS_GUIDE.note} ${PRICE_GUIDE.note}`,
+    finance: {
+      heading: `Spread the cost · ${MIN_SESSIONS} sessions from ${formatPounds(financeTotal)}`,
+      rows: [
+        {
+          name: "Klarna",
+          detail: `3 interest-free payments of ${formatPounds(financePlan("klarna", financeTotal).perPayment)}`,
+        },
+        {
+          name: "Clearpay",
+          detail: `4 interest-free payments of ${formatPounds(financePlan("clearpay", financeTotal).perPayment)}`,
+        },
+        {
+          name: "Ideal4Finance",
+          detail: `from ${formatPounds(financePlan("ideal4finance", financeTotal, 12).perPayment)} a month over 12 months*`,
+        },
+      ],
+      note: `*${FINANCE_DISCLAIMER}`,
+    },
     disclaimer: DISCLAIMER,
   });
 }

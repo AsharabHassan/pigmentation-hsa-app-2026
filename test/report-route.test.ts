@@ -91,9 +91,9 @@ describe("POST /api/report", () => {
 
     const input = deliverReportToGhl.mock.calls[0][0];
     expect(input.emailHtml).toContain("Harley Street Aesthetics Glasgow");
-    expect(input.emailHtml).toContain(
-      "https://harleystreetaesthetic.co.uk/glasgow/contact/",
-    );
+    expect(input.emailHtml).toContain("/widget/bookings/");
+    expect(input.emailHtml).toContain("first_name=");
+    expect(input.emailHtml).toContain("0141 488 8985");
     expect(input.noteBody).toContain("Glasgow pigmentation analysis report");
     expect(input.source).toBe("Pigmentation Analyzer · Glasgow");
     expect(input.tags).toContain("hsa-clinic-glasgow");

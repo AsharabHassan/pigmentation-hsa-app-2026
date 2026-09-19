@@ -1,4 +1,5 @@
 import type { Bucket, ClinicLocationKey } from "./types";
+import { PRICE_PER_SESSION } from "./finance";
 export type { ClinicLocationKey } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,6 +81,63 @@ export const BOOKING_URLS: Record<ClinicLocationKey, string> = {
     WORKING_GLASGOW_BOOKING_URL,
 };
 
+// GoHighLevel calendar embedded on the result page. One shared consultation
+// calendar today; each clinic can be pointed at its own via public env.
+const DEFAULT_CALENDAR_URL =
+  "https://link.harleystreetaesthetic.co.uk/widget/bookings/aesthetic-consultant-1";
+
+export const CALENDAR_URLS: Record<ClinicLocationKey, string> = {
+  london: process.env.NEXT_PUBLIC_BOOKING_CALENDAR_URL ?? DEFAULT_CALENDAR_URL,
+  glasgow:
+    process.env.NEXT_PUBLIC_GLASGOW_BOOKING_CALENDAR_URL ??
+    process.env.NEXT_PUBLIC_BOOKING_CALENDAR_URL ??
+    DEFAULT_CALENDAR_URL,
+};
+
+/** UK numbers in the +44 form GoHighLevel's phone field expects. */
+export function toE164Uk(phone: string): string {
+  const digits = phone.replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) return digits;
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  if (digits.startsWith("44")) return `+${digits}`;
+  if (digits.startsWith("0")) return `+44${digits.slice(1)}`;
+  return digits;
+}
+
+type CalendarLead = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+} | null;
+
+/** The field names GoHighLevel's calendar reads to prefill its contact form. */
+export function calendarPrefill(lead: CalendarLead): Record<string, string> {
+  if (!lead) return {};
+  return {
+    first_name: lead.firstName,
+    last_name: lead.lastName,
+    email: lead.email,
+    phone: toE164Uk(lead.phone),
+  };
+}
+
+/** Calendar link with the visitor's details prefilled, so booking is two taps. */
+export function prefilledCalendarUrl(
+  calendarUrl: string,
+  lead: CalendarLead,
+): string {
+  try {
+    const url = new URL(calendarUrl);
+    for (const [name, value] of Object.entries(calendarPrefill(lead))) {
+      url.searchParams.set(name, value);
+    }
+    return url.toString();
+  } catch {
+    return calendarUrl;
+  }
+}
+
 export const DEFAULT_CLINIC_LOCATION: ClinicLocationKey = "london";
 
 export function isClinicLocationKey(
@@ -91,7 +149,11 @@ export function isClinicLocationKey(
 export function getClinicLocation(location: ClinicLocationKey) {
   const clinic = CLINIC.locations.find((item) => item.key === location);
   if (!clinic) throw new Error(`Unknown clinic location: ${location}`);
-  return { ...clinic, bookingUrl: BOOKING_URLS[location] };
+  return {
+    ...clinic,
+    bookingUrl: BOOKING_URLS[location],
+    calendarUrl: CALENDAR_URLS[location],
+  };
 }
 
 export const SITE_URL =
@@ -177,15 +239,15 @@ export const TREATMENT_CONCERNS = [
 export const PROTOCOL_STEPS = [
   {
     step: "01",
-    title: "VirtueRF · Pulsed Mode",
+    title: "VirtueRF Microneedling",
     blurb:
-      "Radiofrequency energy delivered through fine microchannels helps break down excess pigment — working like a laser, without laser side-effects — while calming the overactive pigment-producing cells.",
+      "Radiofrequency energy delivered through ultra-fine microneedles helps break down excess pigment and calm the overactive pigment-producing cells, while renewing the skin from within.",
   },
   {
     step: "02",
-    title: "Exosome Therapy",
+    title: "Laser",
     blurb:
-      "Growth-factor-rich exosomes soothe the skin, accelerate healing and encourage cellular renewal for a brighter, more even complexion.",
+      "Targeted laser light is absorbed by darker pigment, helping to break it up so the skin can clear it naturally — chosen and set by your practitioner for your skin tone.",
   },
   {
     step: "03",
@@ -195,13 +257,20 @@ export const PROTOCOL_STEPS = [
   },
 ] as const;
 
+/** Minimum course the clinic recommends; the exact number is set at consultation. */
+export const SESSIONS_GUIDE = {
+  minimum: 2,
+  note: "Most patients need at least 2 sessions. Your practitioner confirms the right number for your skin at your consultation.",
+} as const;
+
 /** Supporting elements of the protocol, shown beneath the 3 steps. */
 export const PROTOCOL_SUPPORT =
   "Supported by brightening skincare — Alpha Arbutin, Vitamin C, Niacinamide, Tranexamic Acid — and optional IV brightening drips.";
 
 /** Indicative UK pricing guidance (clinic-stated; flexible payment plans). */
 export const PRICE_GUIDE = {
-  from: "£399",
+  // Starting price for ONE session — most patients need at least two.
+  from: `£${PRICE_PER_SESSION} per session`,
   note: "Indicative — your exact plan is confirmed at consultation. Flexible payment plans available.",
 } as const;
 

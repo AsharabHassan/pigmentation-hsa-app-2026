@@ -9,17 +9,16 @@ import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 // ─────────────────────────────────────────────────────────────────────────────
 // Before/after gallery.
 //
-// PLACEHOLDER: this ships with NO patient images. Before go-live, drop Harley
-// Street Aesthetics' own consented pigmentation before/after pairs into
-// /public/results and populate the CASES array below — each photo cropped to the
-// treatment area only, with documented patient consent. Do not reuse imagery
-// from any other clinic.
+// The pairs in /public/results are the clinic team's own patients, used with
+// their consent for advertising (confirmed by the clinic owner, 2026-09-19).
+// Each is cropped to the treatment area. Add new cases to CASES below — never
+// reuse imagery from another clinic.
 //
 // Both sliders share one frame size for a balanced grid; each photo is shown
 // fully (object-contain) inside that frame, letterboxed where its native ratio
 // differs from the frame.
 // ─────────────────────────────────────────────────────────────────────────────
-const FRAME_RATIO = "4 / 3";
+const FRAME_RATIO = "3 / 4";
 
 interface Case {
   area: string;
@@ -29,10 +28,33 @@ interface Case {
 
 // Populate with HSA's own consented cases, e.g.
 // { area: "jawline and neck", before: "/results/neck-before.jpg", after: "/results/neck-after.jpg" }
-const CASES: Case[] = [];
+const CASES: Case[] = [
+  {
+    area: "cheek and temple",
+    before: "/results/cheek-profile-before.webp",
+    after: "/results/cheek-profile-after.webp",
+  },
+  {
+    area: "nose and upper lip",
+    before: "/results/nose-upper-lip-before.webp",
+    after: "/results/nose-upper-lip-after.webp",
+  },
+  {
+    area: "cheek, close up",
+    before: "/results/cheek-close-up-before.webp",
+    after: "/results/cheek-close-up-after.webp",
+  },
+  {
+    area: "cheek discolouration",
+    before: "/results/cheek-redness-before.webp",
+    after: "/results/cheek-redness-after.webp",
+  },
+];
 
 export function ResultsGallery() {
   const clinic = useClinicLocation();
+  // An empty "results will appear here" box costs trust; show nothing instead.
+  if (CASES.length === 0) return null;
 
   return (
     <div>
@@ -48,7 +70,7 @@ export function ResultsGallery() {
       </p>
 
       {CASES.length > 0 ? (
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5">
           {CASES.map((c, i) => (
             <motion.div
               key={c.area}

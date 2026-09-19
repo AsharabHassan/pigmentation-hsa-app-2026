@@ -3,6 +3,7 @@ import {
   CLINIC,
   getClinicLocation,
   isClinicLocationKey,
+  prefilledCalendarUrl,
 } from "@/lib/constants";
 import type { ClinicLocationKey } from "@/lib/types";
 
@@ -125,6 +126,14 @@ export async function POST(request: Request): Promise<Response> {
     : "london";
   const clinic = getClinicLocation(clinicLocation);
 
+  // Straight to the calendar with their details filled in — not a contact form.
+  const bookingLink = prefilledCalendarUrl(clinic.calendarUrl, {
+    firstName: first,
+    lastName: last,
+    email,
+    phone,
+  });
+
   const safeName = (first || "client").replace(/[^\w-]/g, "") || "client";
   const fileName = `Pigmentation-Analysis-Report-${safeName}.pdf`;
   const subject = `${first || "Your"} pigmentation analysis report`;
@@ -137,7 +146,14 @@ export async function POST(request: Request): Promise<Response> {
       <p>It's a guide to help you prepare — your suitability is always confirmed by
       a practitioner. When you're ready, book your free online consultation and
       we'll talk you through everything.</p>
-      <p><a href="${clinic.bookingUrl}" style="color:#b8902a">Book your free online consultation →</a></p>
+      <p style="margin:6px 0"><strong>On your free 15-minute online consultation:</strong></p>
+      <ul style="margin:0 0 18px;padding-left:20px">
+        <li>A practitioner has already reviewed this report</li>
+        <li>You get your exact plan and price</li>
+        <li>No obligation</li>
+      </ul>
+      <p><a href="${escapeHtml(bookingLink)}" style="display:inline-block;background:#b8902a;color:#ffffff;text-decoration:none;font-weight:bold;padding:13px 26px;border-radius:999px">Choose your consultation time</a></p>
+      <p style="font-size:13px;color:#5c5852">Your details are already filled in. Prefer to talk? Call us on ${clinic.phone}.</p>
       <p style="color:#5c5852">— ${CLINIC.name}, ${clinic.city}</p>
     </div>`;
 
