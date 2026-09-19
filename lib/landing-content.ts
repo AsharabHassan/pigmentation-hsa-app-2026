@@ -13,7 +13,27 @@ export interface LandingFaq {
   answer: string;
 }
 
+export interface LandingDoctor {
+  name: string;
+  role: string;
+  bio: string;
+  /** Portrait in /public/team; omitted until a verified photo is supplied. */
+  photo?: string;
+}
+
+export interface LandingPhoto {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+}
+
 export interface LandingContent {
+  /** Headline rating from the clinic's Google Business Profile (checked 2026-09-19). */
+  googleRating: { score: string; reviews?: number };
+  heroPhoto: LandingPhoto;
+  clinicPhotos: LandingPhoto[];
+  doctors: LandingDoctor[];
   /** Route of this page. */
   path: string;
   /** Wizard route the primary CTA opens. */
@@ -79,17 +99,64 @@ const sharedFaqs = (city: string): LandingFaq[] => [
   },
 ];
 
+// Team as published on harleystreetaesthetic.co.uk/<city>/team. Bios are the
+// clinic's own wording, shortened.
+const MEHDI: LandingDoctor = {
+  name: "Mr Syed Y Mehdi, FRCS",
+  role: "Consultant Plastic Surgeon",
+  bio: "Reconstructive and aesthetic surgeon whose work spans facial rejuvenation and advanced skin surgery across our London and Glasgow clinics.",
+  photo: "/team/syed-mehdi.webp",
+};
+const AYDA: LandingDoctor = {
+  name: "Dr Ayda Soltanzadeh",
+  role: "Consultant Dermatologist",
+  bio: "A background in clinical dermatology and a meticulous approach to aesthetic medicine, with plans tailored to each patient's skin.",
+  photo: "/team/ayda-soltanzadeh.webp",
+};
+const KHAN: LandingDoctor = {
+  name: "Dr Mazhar Khan",
+  role: "Medical Doctor, MBBS MRCGP DRCOG DFFP",
+  bio: "More than 23 years of clinical experience, over 20 of them as a GP in NHS and private practice.",
+  photo: "/team/mazhar-khan.webp",
+};
+const FAISAL: LandingDoctor = {
+  name: "Dr Faisal",
+  role: "Aesthetic Medicine",
+  bio: "Focuses on skin tightening and rejuvenation, including VirtueRF Microneedling — the first step of our pigmentation protocol.",
+};
+const AL_NAKIB: LandingDoctor = {
+  name: "Dr Khalil Al-Nakib",
+  role: "Consultant Plastic Surgeon",
+  bio: "Combines deep anatomical understanding with an eye for harmony, across surgical and non-surgical skin treatment.",
+  photo: "/team/khalil-al-nakib.webp",
+};
+
+const GLASGOW_PHOTOS: LandingPhoto[] = [
+  { src: "/clinic/glasgow-waiting-area.webp", alt: "Waiting area at Harley Street Aesthetics Glasgow, Ingram House", width: 900, height: 1200 },
+  { src: "/clinic/glasgow-treatment-room-2.webp", alt: "Treatment room at the Glasgow clinic", width: 900, height: 1200 },
+  { src: "/clinic/glasgow-treatment-room-1.webp", alt: "Second treatment room at the Glasgow clinic", width: 900, height: 1200 },
+];
+
 export const LANDING_CONTENT: Record<ClinicLocationKey, LandingContent> = {
   london: {
     path: "/london/pigmentation-removal",
     analysisPath: "/",
     landingId: "ads-london-pigmentation-removal",
+    googleRating: { score: "4.6", reviews: 219 },
+    heroPhoto: {
+      src: "/clinic/london-laser-treatment.webp",
+      alt: "Laser treatment in progress at our London clinic",
+      width: 1200,
+      height: 1420,
+    },
+    clinicPhotos: [],
+    doctors: [MEHDI, AYDA, FAISAL, KHAN],
     metaTitle:
       "Pigmentation Removal London | Free AI Skin Analysis · Harley Street Aesthetics",
     metaDescription: `Doctor-led pigmentation removal at 10 Harley Street, London. Map your dark spots free in 60 seconds with our AI skin analysis, then book a free online consultation. From £${PRICE_PER_SESSION} per session, 0% payment plans.`,
     eyebrow: "Pigmentation removal · 10 Harley Street, London",
-    h1Lead: "Pigmentation removal in London,",
-    h1Accent: "starting with a free AI skin analysis",
+    h1Lead: "Pigmentation removal in London.",
+    h1Accent: "See your skin mapped first, free.",
     intro:
       "Dark spots, sun damage and uneven tone mapped across your face in 60 seconds — then a doctor-led plan to fade them at our Harley Street clinic.",
     localProof: [
@@ -109,12 +176,21 @@ export const LANDING_CONTENT: Record<ClinicLocationKey, LandingContent> = {
     path: "/glasgow/pigmentation-removal",
     analysisPath: "/glasgow",
     landingId: "ads-glasgow-pigmentation-removal",
+    googleRating: { score: "4.4" },
+    heroPhoto: {
+      src: "/clinic/glasgow-reception-desk.webp",
+      alt: "Reception at Harley Street Aesthetics Glasgow",
+      width: 900,
+      height: 1200,
+    },
+    clinicPhotos: GLASGOW_PHOTOS,
+    doctors: [AL_NAKIB, AYDA, MEHDI],
     metaTitle:
       "Pigmentation Removal Glasgow | Free AI Skin Analysis · Harley Street Aesthetics",
     metaDescription: `Doctor-led pigmentation removal on Ingram Street, Glasgow. Map your dark spots free in 60 seconds with our AI skin analysis, then book a free online consultation. From £${PRICE_PER_SESSION} per session, 0% payment plans.`,
     eyebrow: "Pigmentation removal · Ingram Street, Glasgow",
-    h1Lead: "Pigmentation removal in Glasgow,",
-    h1Accent: "starting with a free AI skin analysis",
+    h1Lead: "Pigmentation removal in Glasgow.",
+    h1Accent: "See your skin mapped first, free.",
     intro:
       "Dark spots, sun damage and uneven tone mapped across your face in 60 seconds — then a doctor-led plan to fade them at our Glasgow city-centre clinic.",
     localProof: [

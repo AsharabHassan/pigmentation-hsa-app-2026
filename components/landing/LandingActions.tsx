@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, CalendarHeart, ScanFace } from "lucide-react";
+import { CalendarHeart, ScanFace } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   BOOKING_ANCHOR_ID,
@@ -46,8 +46,7 @@ export function StartAnalysisLink({
     >
       {children ?? (
         <>
-          <ScanFace size={19} /> Start my free AI analysis
-          <ArrowRight size={17} />
+          <ScanFace size={19} /> Start my free skin analysis
         </>
       )}
     </a>
@@ -61,7 +60,7 @@ export function BookConsultationButton({ className }: { className?: string }) {
       onClick={scrollToBooking}
       className={cn(secondary, className)}
     >
-      <CalendarHeart size={18} /> Book free online consultation
+      <CalendarHeart size={18} /> Book a free consultation
     </button>
   );
 }
@@ -105,7 +104,7 @@ export function LandingStickyBar({
         landingId={landingId}
         className="h-12 flex-1 px-4 text-sm"
       >
-        <ScanFace size={17} /> Free AI analysis
+        <ScanFace size={17} /> Free skin analysis
       </StartAnalysisLink>
       <button
         type="button"
