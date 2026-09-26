@@ -14,6 +14,7 @@ import {
 import { getMetaAttribution } from "@/lib/meta-pixel";
 import { hasMetaTrackingConsent } from "@/lib/meta-consent";
 import { getVisitContext } from "@/lib/visit-context";
+import { trackCompletedGoogleLead } from "@/lib/google-ads";
 import type { Lead } from "@/lib/types";
 import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 
@@ -77,8 +78,9 @@ export function LeadGateScreen() {
       setResult(result);
     }
 
-    // The browser sends no conversion event. GHL is the sole source of the
-    // server-side Lead and receives Meta fields only after advertising consent.
+    // GHL remains the sole source of Meta Lead events. Google receives only an
+    // anonymous conversion after confirmed CRM delivery and advertising consent.
+    const googleTransactionId = crypto.randomUUID();
     void submitLead({
       lead,
       result,
@@ -88,6 +90,8 @@ export function LeadGateScreen() {
         imageConsentAt ?? new Date().toISOString(),
       metaTrackingConsent: hasMetaTrackingConsent(),
       attribution: getMetaAttribution(),
+    }).then((delivered) => {
+      if (delivered) trackCompletedGoogleLead(googleTransactionId);
     });
 
     // Build the report PDF and deliver it to GoHighLevel: uploaded, written onto

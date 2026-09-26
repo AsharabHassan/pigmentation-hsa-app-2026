@@ -5,6 +5,7 @@ import {
   type HsaPigmentationSliderProps,
 } from './HsaPigmentationSlider';
 import {getAudioDuration} from './get-audio-duration';
+import {HsaPigmentationDoctor60} from './HsaPigmentationDoctor60';
 
 const FPS = 30;
 const BASE_DURATION_SECONDS = 39;
@@ -32,6 +33,7 @@ const calculateMetadata: CalculateMetadataFunction<HsaPigmentationReelProps> = a
 export const RemotionRoot = () => {
   return (
     <>
+      <Composition id="HsaPigmentationDoctor60" component={HsaPigmentationDoctor60} durationInFrames={1800} fps={30} width={1080} height={1920} defaultProps={{musicVolume:0.15,captionsEnabled:true}} />
       <Composition
         id="HsaPigmentationCinematic"
         component={HsaPigmentationReel}

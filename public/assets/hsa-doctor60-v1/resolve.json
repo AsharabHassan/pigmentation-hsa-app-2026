@@ -1,0 +1,13 @@
+{
+  "hash": "9b9169a930d88e78739fa8bc7322195a9ee5aed82cc42a6dc5d6033e220ba966",
+  "provider": "ElevenLabs",
+  "generated": "2026-09-20T11:01:05.026Z",
+  "request": {
+    "model_id": "eleven_text_to_sound_v2",
+    "duration_seconds": 2.5,
+    "prompt_influence": 0.3,
+    "text": "One soft warm polished tonal accent for a premium clinic closing logo, rounded immediate attack, gentle elegant decay, subtle and unobtrusive. No speech, no musical sequence, no impact boom."
+  },
+  "bytes": 40586,
+  "requestId": null
+}

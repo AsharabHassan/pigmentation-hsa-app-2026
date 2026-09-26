@@ -1,0 +1,17 @@
+.hero { max-width:1250px; width:calc(100% - 96px); margin:auto; display:grid; grid-template-columns:1.04fr 1fr; align-items:center; column-gap:8%; padding:55px 0 45px; }
+.eyebrow { display:flex; align-items:center; gap:10px; font-size:9px; font-weight:600; letter-spacing:.16em; color:#906924; margin-bottom:24px; }
+.copy h1 { font-size:clamp(66px,6.5vw,95px); font-weight:400; line-height:.94; letter-spacing:-.045em; color:#362719; }
+.copy h1 em { font-weight:400; color:#a67e33; }
+.strap { font-family:var(--font-serif); font-size:27px; margin-top:24px; color:#5c4224; }
+.intro { font-size:14px; line-height:1.85; color:#786247; margin-top:16px; max-width:440px; }
+.benefits { margin:23px 0; display:grid; gap:11px; }
+.benefits li { font-size:11px; display:flex; align-items:flex-start; gap:9px; color:#69543a; }.benefits svg { color:#a77c2d; flex-shrink:0; margin-top:1px; }
+.hero .start { background:linear-gradient(110deg,#c9a156,#e5c586 55%,#cfaa60); color:#302313; border:1px solid #c6a05a; border-radius:3px; font-size:13px; padding:0 27px; gap:25px; box-shadow:0 10px 30px #956c2518; }
+.hero .start { margin-top:24px; }
+.micro { font-size:9px; color:#816b4e; margin-top:13px; }
+.location { display:flex; align-items:center; gap:6px; font-size:10px; margin-top:23px; color:#8d6a31; }
+.note { margin-top:12px; font-size:10px; color:#806c51; max-width:370px; line-height:1.7; }
+.visual { min-width:0; }
+.journey { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid #dcc7a1; margin-top:42px; padding-top:28px; gap:25px; }
+.journey>div { display:flex; gap:15px; align-items:flex-start; }.journey>div>span { font-family:var(--font-serif); font-size:35px; color:#b68f4b; line-height:1; }.journey p { font-family:var(--font-serif); color:#46331e; font-size:24px; line-height:1; }.journey small { font-family:var(--font-sans); font-size:10px; color:#806849; display:block; margin-top:10px; line-height:1.6; }
+@media(max-width:760px) { .hero { width:calc(100% - 40px); grid-template-columns:1fr; padding-top:30px; gap:30px; }.copy h1 { font-size:clamp(61px,16vw,82px); }.eyebrow { font-size:7px; letter-spacing:.12em; }.strap { font-size:24px; margin-top:21px; }.intro { font-size:13px; }.benefits li { font-size:10px; }.hero .start { width:100%; font-size:12px; }.micro { text-align:center; font-size:8px; }.note { font-size:9px; }.visual { padding:0 9px; }.journey { grid-column:auto; grid-template-columns:1fr; margin-top:0; gap:23px; }.journey>div { border-bottom:1px solid #e1cfb1; padding-bottom:18px; }.journey small { margin-top:6px; } }

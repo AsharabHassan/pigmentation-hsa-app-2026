@@ -11,6 +11,23 @@ interface CameraCaptureProps {
   onError: (message: string) => void;
 }
 
+const CAMERA_START_TIMEOUT_MS = 8_000;
+const CAMERA_FAILED =
+  "We couldn't open the in-page camera here. Tap “Use camera” again to open your phone's own camera, or upload a photo.";
+
+/**
+ * True when the browser can run the live in-page preview. It cannot on plain
+ * http, and often cannot inside the Instagram / Facebook in-app browsers that
+ * ad traffic opens in — the caller falls back to the phone's native camera.
+ */
+export function inPageCameraAvailable(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.isSecureContext &&
+    typeof navigator.mediaDevices?.getUserMedia === "function"
+  );
+}
+
 /** Live front-camera preview with a single-frame capture to base64 JPEG. */
 export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -19,8 +36,17 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
 
   useEffect(() => {
     let cancelled = false;
+    // A stream that never starts playing (permission sheet ignored, in-app
+    // browser quirks) must not leave the visitor on a spinner forever.
+    const watchdog = window.setTimeout(() => {
+      if (cancelled || videoRef.current?.videoWidth) return;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      onError(CAMERA_FAILED);
+    }, CAMERA_START_TIMEOUT_MS);
+
     async function start() {
       try {
+        if (!inPageCameraAvailable()) throw new Error("camera-unavailable");
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1350 } },
           audio: false,
@@ -33,17 +59,18 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
+          window.clearTimeout(watchdog);
           setReady(true);
         }
       } catch {
-        onError(
-          "We couldn't access your camera. You can upload a photo instead, or just answer the questions.",
-        );
+        window.clearTimeout(watchdog);
+        if (!cancelled) onError(CAMERA_FAILED);
       }
     }
     start();
     return () => {
       cancelled = true;
+      window.clearTimeout(watchdog);
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, [onError]);
@@ -71,6 +98,7 @@ export function CameraCapture({ onCapture, onError }: CameraCaptureProps) {
       <div className="relative aspect-[4/5] w-full max-w-xs overflow-hidden rounded-[2rem] border border-peach/20 bg-white/[0.04] shadow-soft">
         <video
           ref={videoRef}
+          autoPlay
           playsInline
           muted
           className="h-full w-full -scale-x-100 object-cover"

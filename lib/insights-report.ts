@@ -35,7 +35,9 @@ export const SEGMENTS = {
      WHEN top_severity >= 70 THEN 'high (70+)' WHEN top_severity >= 40 THEN 'medium (40–69)'
      ELSE 'low (under 40)' END`,
   "Clinic": "clinic_location",
-  "Campaign": "COALESCE(utm_campaign, CASE WHEN from_meta_ad THEN '(meta ad, untagged)' ELSE '(none)' END)",
+  "Campaign": "COALESCE(utm_campaign, CASE WHEN from_meta_ad THEN '(meta ad, untagged)' WHEN from_google_ad THEN '(google ad, untagged)' ELSE '(none)' END)",
+  "Ad platform": "CASE WHEN from_google_ad THEN 'Google Ads' WHEN from_meta_ad THEN 'Meta Ads' ELSE 'other / organic' END",
+  "Landing page": "COALESCE(landing_path, '(unknown)')",
   "Ad / creative": "COALESCE(utm_content, '(none)')",
   "Source": "COALESCE(utm_source, referrer_host, '(direct)')",
   "Device": "device",

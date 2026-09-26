@@ -51,26 +51,37 @@ const CASES: Case[] = [
   },
 ];
 
-export function ResultsGallery() {
+/** `wide` is the landing-page layout: no built-in heading, four across on desktop. */
+export function ResultsGallery({ wide = false }: { wide?: boolean } = {}) {
   const clinic = useClinicLocation();
   // An empty "results will appear here" box costs trust; show nothing instead.
   if (CASES.length === 0) return null;
 
   return (
     <div>
-      <div className="flex items-center justify-center gap-2 text-center">
-        <Sparkles size={14} className="text-peach" />
-        <h3 className="font-serif text-xl text-heading">
-          Real results, real patients
-        </h3>
-      </div>
-      <p className="mx-auto mt-1 max-w-md text-center text-[13px] leading-relaxed text-body/80">
-        Actual pigmentation results from our {clinic.city} team. Individual
-        results vary — yours is confirmed at your consultation.
-      </p>
+      {!wide && (
+        <>
+          <div className="flex items-center justify-center gap-2 text-center">
+            <Sparkles size={14} className="text-peach" />
+            <h3 className="font-serif text-xl text-heading">
+              Real results, real patients
+            </h3>
+          </div>
+          <p className="mx-auto mt-1 max-w-md text-center text-[13px] leading-relaxed text-body/80">
+            Actual pigmentation results from our {clinic.city} team. Individual
+            results vary — yours is confirmed at your consultation.
+          </p>
+        </>
+      )}
 
       {CASES.length > 0 ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5">
+        <div
+          className={
+            wide
+              ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+              : "mt-5 grid grid-cols-2 gap-3 sm:gap-5"
+          }
+        >
           {CASES.map((c, i) => (
             <motion.div
               key={c.area}

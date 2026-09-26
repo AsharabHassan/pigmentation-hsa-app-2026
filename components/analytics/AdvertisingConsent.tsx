@@ -41,11 +41,14 @@ export function AdvertisingConsentPanel({
                 id="advertising-consent-description"
                 className="mt-2 text-sm leading-relaxed text-body"
               >
-                With your permission, we use Meta advertising cookies. If you
+                With your permission, we use Google and Meta advertising cookies.
+                Google measures completed enquiries using advertising identifiers;
+                we do not send Google your name, email, phone, photo or analysis.
+                If you
                 submit your details, our CRM may also send Meta protected,
                 hashed identifiers such as your name, email and phone, plus
                 browser and network information, so Meta can match and measure
-                this campaign. Nothing is sent to Meta if you reject, and your
+                this campaign. Optional Google and Meta tracking stays off if you reject, and your
                 analysis still works normally.{" "}
                 <a
                   href="https://www.facebook.com/privacy/policy/"
@@ -53,9 +56,13 @@ export function AdvertisingConsentPanel({
                   rel="noreferrer"
                   className="underline decoration-white/40 underline-offset-2 transition hover:text-heading"
                 >
-                  How Meta uses information
+                How Meta uses information
                 </a>
-                .
+                {" · "}
+                <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer"
+                  className="underline decoration-white/40 underline-offset-2 transition hover:text-heading">
+                  How Google uses information
+                </a>.
               </p>
             </div>
             {consent !== "unset" ? (
@@ -76,14 +83,14 @@ export function AdvertisingConsentPanel({
               onClick={() => onChoose("denied")}
               className="min-h-11 rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-heading transition hover:border-white/40 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-peach"
             >
-              Reject optional Meta tracking
+              Reject optional advertising tracking
             </button>
             <button
               type="button"
               onClick={() => onChoose("granted")}
               className="min-h-11 rounded-full bg-peach px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-peach-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-peach-light focus-visible:ring-offset-2 focus-visible:ring-offset-[#111]"
             >
-              Accept optional Meta tracking
+              Accept optional advertising tracking
             </button>
           </div>
         </section>

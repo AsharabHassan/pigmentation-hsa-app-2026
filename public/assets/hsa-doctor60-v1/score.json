@@ -1,0 +1,14 @@
+{
+  "hash": "95786f1c7134191096a4f3226b48347bea37b09a06e9bd4dda97321c2adc0ad3",
+  "provider": "ElevenLabs",
+  "generated": "2026-09-20T11:00:58.908Z",
+  "request": {
+    "model_id": "music_v2",
+    "music_length_ms": 60000,
+    "force_instrumental": true,
+    "sign_with_c2pa": true,
+    "prompt": "Original 60 second instrumental for a premium British doctor-led skin clinic film. Restrained felt piano, warm low strings, subtle electronic pulse at 92 BPM. Seconds 0-12 intimate curiosity with very soft piano, 12-28 gentle confident forward movement beneath a medical explanation, 28-44 clean delicate shimmering texture for a real skin analysis app, 44-54 warm human reassurance, 54-60 elegant resolved final chord with short clean decay. Spacious, sophisticated and calm. Leave the speech frequencies uncluttered. No vocals, no choir, no lyrics, no trailer drums, no aggressive drops."
+  },
+  "bytes": 1457224,
+  "requestId": null
+}

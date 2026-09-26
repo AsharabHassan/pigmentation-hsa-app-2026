@@ -32,6 +32,11 @@
 
   /* Near-black, used for dark surfaces, overlays and button text */
   --color-ink: #050505;
+  /* Landing pages: warm paper sections that let the real clinic photos breathe. */
+  --color-ivory: #f4efe4;
+  --color-ivory-deep: #e6dccb;
+  --color-umber: #1c1813;
+  --color-umber-soft: #5f574a;
 
   --font-serif: var(--font-playfair), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-montserrat), Helvetica, Arial, sans-serif;
@@ -90,4 +95,21 @@ h4 {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Landing-page hero: slow scan sweep over the sample report. */
+@keyframes lp-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(420%); }
+}
+.lp-scanline { animation: lp-scan 3.6s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-scanline { animation: none; opacity: 0; }
+}
+
+/* Landing-page paper sections: the global heading colour is unlayered, so the
+   dark-on-ivory headings need an equally specific override. */
+.lp-paper h2,
+.lp-paper h3 {
+  color: var(--color-umber);
 }

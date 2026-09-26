@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Upload, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DisclaimerBanner } from "@/components/compliance/DisclaimerBanner";
-import { CameraCapture } from "@/components/scan/CameraCapture";
+import {
+  CameraCapture,
+  inPageCameraAvailable,
+} from "@/components/scan/CameraCapture";
 import { PhotoGuide } from "@/components/scan/PhotoGuide";
 import { useWizard, type MediaType } from "@/store/wizard-store";
 import { fileToDownscaledImage } from "@/lib/image";
@@ -21,6 +24,10 @@ export function ConsentCaptureScreen() {
   const [mode, setMode] = useState<"choose" | "camera">("choose");
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // The phone's own camera app, via <input capture>. Works where the in-page
+  // preview cannot: plain http, and the Instagram / Facebook in-app browsers.
+  const nativeCameraRef = useRef<HTMLInputElement>(null);
+  const [inPageCameraFailed, setInPageCameraFailed] = useState(false);
   const demoCaptureStartedRef = useRef(false);
 
   // Development-only capture helper: after the normal consent action, load the
@@ -113,6 +120,7 @@ export function ConsentCaptureScreen() {
             onCapture={handleCapture}
             onError={(m) => {
               setError(m);
+              setInPageCameraFailed(true);
               setMode("choose");
             }}
           />
@@ -141,7 +149,12 @@ export function ConsentCaptureScreen() {
               className="flex-1"
               onClick={() => {
                 setImageConsent(true);
-                setMode("camera");
+                setError(null);
+                if (inPageCameraFailed || !inPageCameraAvailable()) {
+                  nativeCameraRef.current?.click();
+                } else {
+                  setMode("camera");
+                }
               }}
             >
               <Camera size={18} /> Use camera
@@ -157,6 +170,14 @@ export function ConsentCaptureScreen() {
             >
               <Upload size={18} /> Upload photo
             </Button>
+            <input
+              ref={nativeCameraRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="sr-only"
+              onChange={handleUpload}
+            />
             <input
               ref={fileRef}
               type="file"

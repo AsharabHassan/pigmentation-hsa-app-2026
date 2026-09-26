@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Montserrat } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "@/lib/constants";
 import MetaPixel from "@/components/analytics/MetaPixel";
+import GoogleAds from "@/components/analytics/GoogleAds";
+import GoogleTagManager from "@/components/analytics/GoogleTagManager";
 
-const playfair = Playfair_Display({
+const playfair = Cormorant_Garamond({
   weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   subsets: ["latin"],
@@ -12,7 +14,7 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const montserrat = Montserrat({
+const montserrat = Manrope({
   subsets: ["latin"],
   variable: "--font-montserrat",
   display: "swap",
@@ -47,6 +49,8 @@ export default function RootLayout({
       <body className="min-h-full">
         {children}
         <MetaPixel />
+        <GoogleAds />
+        <GoogleTagManager />
       </body>
     </html>
   );

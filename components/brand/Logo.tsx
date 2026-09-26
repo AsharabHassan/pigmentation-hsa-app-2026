@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface LogoProps {
   tone?: "dark" | "light";
@@ -16,12 +17,7 @@ export function Logo({ tone = "dark", withByline = false, className }: LogoProps
   const sub = tone === "light" ? "text-white/65" : "text-body/70";
   return (
     <span className={cn("inline-flex items-center gap-3 leading-none", className)}>
-      <span
-        aria-hidden
-        className="grid h-9 w-9 place-items-center rounded-full border border-peach/45 font-serif text-[13px] font-semibold tracking-[0.08em] text-gold-gradient shadow-[0_0_24px_-8px_rgba(212,175,55,0.6)]"
-      >
-        HSA
-      </span>
+      <Image src="/landing/hsa-logo.png" width={52} height={52} alt="HSA" className="h-12 w-12 object-contain" />
       <span className="inline-flex flex-col leading-none">
         <span
           className={cn(

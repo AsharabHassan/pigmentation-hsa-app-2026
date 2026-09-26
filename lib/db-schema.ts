@@ -43,6 +43,8 @@ CREATE INDEX IF NOT EXISTS analyses_created_idx ON analyses (created_at DESC);
 CREATE INDEX IF NOT EXISTS analyses_email_idx ON analyses (email);
 CREATE INDEX IF NOT EXISTS analyses_phone_key_idx ON analyses (phone_key);
 
+ALTER TABLE analyses ADD COLUMN IF NOT EXISTS from_google_ad boolean NOT NULL DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS events (
   id           bigserial PRIMARY KEY,
   analysis_id  uuid NOT NULL REFERENCES analyses (id) ON DELETE CASCADE,

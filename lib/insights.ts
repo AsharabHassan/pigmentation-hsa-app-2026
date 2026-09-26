@@ -19,6 +19,7 @@ export const visitContextSchema = z
     utmContent: label.nullish(),
     utmTerm: label.nullish(),
     fromMetaAd: z.boolean().default(false),
+    fromGoogleAd: z.boolean().default(false),
     landingPath: label.nullish(),
     referrerHost: label.nullish(),
   })

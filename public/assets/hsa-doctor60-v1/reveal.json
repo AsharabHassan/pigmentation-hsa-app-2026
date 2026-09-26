@@ -1,0 +1,13 @@
+{
+  "hash": "6b6a9203ff6ab719e4271653b4fb5424f2067ecb363a83f38faf599ca88daaeb",
+  "provider": "ElevenLabs",
+  "generated": "2026-09-20T11:01:02.892Z",
+  "request": {
+    "model_id": "eleven_text_to_sound_v2",
+    "duration_seconds": 2,
+    "prompt_influence": 0.3,
+    "text": "One delicate glass confirmation tick opening into a subtle warm tonal bloom. Precise immediate attack, reassuring sophisticated report reveal, short clean tail. No melody, no speech, no alarm."
+  },
+  "bytes": 33062,
+  "requestId": null
+}
