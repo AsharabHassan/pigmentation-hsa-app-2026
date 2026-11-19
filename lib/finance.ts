@@ -8,10 +8,14 @@
 // offer of credit — the provider decides eligibility and the final rate.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Starting price of one session, in pounds. Keep in step with PRICE_GUIDE. */
-export const PRICE_PER_SESSION = 399;
-export const MIN_SESSIONS = 2;
-export const MAX_SESSIONS = 6;
+/** Price of one session, in pounds. Keep in step with PRICE_GUIDE. */
+export const PRICE_PER_SESSION = 299;
+/** The usual starting course: 4 sessions, two weeks apart, at one course price. */
+export const COURSE_SESSIONS = 4;
+export const COURSE_PRICE = 999;
+export const MIN_SESSIONS = 1;
+/** Some people need 6 or 8 sessions. */
+export const MAX_SESSIONS = 8;
 
 export const ILLUSTRATIVE_APR = 0.129;
 export const LOAN_TERMS = [12, 24, 36, 48, 60] as const;
@@ -34,7 +38,7 @@ export const FINANCE_PROVIDERS: FinanceProvider[] = [
 ];
 
 export const FINANCE_DISCLAIMER =
-  "Illustrative figures based on our from-price; your exact cost is confirmed at consultation. Klarna and Clearpay plans are interest-free; missed payments may affect your credit record and your ability to use them. Ideal4Finance figures are illustrated at 12.9% APR — the actual rate depends on your circumstances, and 0% options may be available. All finance is provided by the named lender, subject to status and affordability checks, 18+ only. Please borrow only what you can comfortably repay.";
+  "Illustrative figures based on our session and course prices; your exact cost is confirmed at consultation. Klarna and Clearpay plans are interest-free; missed payments may affect your credit record and your ability to use them. Ideal4Finance figures are illustrated at 12.9% APR — the actual rate depends on your circumstances, and 0% options may be available. All finance is provided by the named lender, subject to status and affordability checks, 18+ only. Please borrow only what you can comfortably repay.";
 
 export interface Instalment {
   label: string;
@@ -55,9 +59,33 @@ export interface FinancePlan {
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
-export function courseTotal(sessions: number): number {
+export interface CourseBreakdown {
+  sessions: number;
+  /** Full courses of 4 at the course price. */
+  courses: number;
+  /** Sessions outside a full course, at the per-session price. */
+  singles: number;
+  total: number;
+}
+
+/**
+ * Prices a number of sessions: every full set of 4 at the course price (£999),
+ * any remaining sessions at the per-session price (£299).
+ */
+export function courseBreakdown(sessions: number): CourseBreakdown {
   const count = Math.min(MAX_SESSIONS, Math.max(MIN_SESSIONS, Math.round(sessions)));
-  return count * PRICE_PER_SESSION;
+  const courses = Math.floor(count / COURSE_SESSIONS);
+  const singles = count % COURSE_SESSIONS;
+  return {
+    sessions: count,
+    courses,
+    singles,
+    total: courses * COURSE_PRICE + singles * PRICE_PER_SESSION,
+  };
+}
+
+export function courseTotal(sessions: number): number {
+  return courseBreakdown(sessions).total;
 }
 
 /** Standard amortised monthly payment. */

@@ -7,6 +7,8 @@ import {
 import { serverEnv } from "@/lib/env";
 import { ensureLeadRoutingInGhl } from "@/lib/ghl-contact";
 import { attachLead } from "@/lib/insights-store";
+import { SPOT_TYPE_KEYS } from "@/lib/spot-types";
+import { CALL_TIME_KEYS } from "@/lib/consultation-consent";
 import type { Lead } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -79,6 +81,8 @@ const resultSchema = z
       z.number().finite().min(0).max(100),
     ),
     framingAdequate: z.boolean(),
+    spotType: z.enum(SPOT_TYPE_KEYS).nullable().optional(),
+    secondarySpotType: z.enum(SPOT_TYPE_KEYS).nullable().optional(),
     analysisId: z.string().uuid().optional(),
   })
   .strict();
@@ -103,6 +107,13 @@ export const leadRequestSchema = z
     imageProcessingConsent: z.literal(true).optional(),
     imageProcessingConsentAt: z.string().datetime().optional(),
     metaTrackingConsent: z.boolean(),
+    // "I'm requesting a free consultation" — ticked before the scan. Optional
+    // only so a tab opened before this release doesn't lose its lead.
+    consultationContactConsent: z.literal(true).optional(),
+    consultationContactConsentAt: z.string().datetime().optional(),
+    consultationContactStatement: z.string().trim().max(500).optional(),
+    consultationContactConsentVersion: z.string().trim().max(64).optional(),
+    preferredCallTime: z.enum(CALL_TIME_KEYS).optional(),
     // Retired alongside the full-report feature. Accepted from an already-open
     // tab for the same reason as `marketingConsent`, and never acted upon.
     reportStorageConsent: z.boolean().optional(),
@@ -242,32 +253,49 @@ export async function POST(request: Request): Promise<Response> {
       : undefined,
     metaTrackingConsent: metaTrackingAllowed,
     meta,
+    consultationContact: body.consultationContactConsent
+      ? {
+          at: body.consultationContactConsentAt ?? submittedAt,
+          statement: body.consultationContactStatement ?? "",
+          version: body.consultationContactConsentVersion ?? "",
+        }
+      : undefined,
+    preferredCallTime: body.preferredCallTime,
   });
 
   let webhook: string | undefined;
+  let crmWebhook: string | undefined;
   try {
     webhook = serverEnv().GHL_WEBHOOK_URL;
+    crmWebhook = serverEnv().CRM_LEAD_WEBHOOK_URL;
   } catch {
     webhook = undefined;
+    crmWebhook = undefined;
   }
 
   const deliveryPromise = webhook
     ? deliverWebhook(webhook, payload)
+    : Promise.resolve<DeliveryResult>({ delivered: false, attempts: 0 });
+  const crmPromise = crmWebhook
+    ? deliverWebhook(crmWebhook, payload)
     : Promise.resolve<DeliveryResult>({ delivered: false, attempts: 0 });
   const routingPromise = ensureLeadRoutingInGhl({
     lead: body.lead,
     source: `Pigmentation Analyzer · ${payload.clinicLocationLabel}`,
     tags: payload.tags,
   });
-  const [delivery, routing] = await Promise.all([
+  const [delivery, routing, , crmDelivery] = await Promise.all([
     deliveryPromise,
     routingPromise,
     body.result.analysisId
       ? attachLead(body.result.analysisId, body.lead)
       : Promise.resolve(null),
+    crmPromise,
   ]);
 
-  const trackingQueued = Boolean(meta && delivery.delivered);
+  const trackingQueued = Boolean(
+    meta && (delivery.delivered || crmDelivery.delivered),
+  );
   const log = {
     event: "ghl_lead_delivery",
     delivered: delivery.delivered,
@@ -275,13 +303,17 @@ export async function POST(request: Request): Promise<Response> {
     trackingQueued,
     routingEnsured: routing.ok && routing.tagged === true,
     webhookConfigured: Boolean(webhook),
+    crmConfigured: Boolean(crmWebhook),
+    crmDelivered: crmDelivery.delivered,
+    crmAttempts: crmDelivery.attempts,
   };
-  if (delivery.delivered) console.info("[lead]", log);
+  if (delivery.delivered && (!crmWebhook || crmDelivery.delivered))
+    console.info("[lead]", log);
   else console.warn("[lead]", log);
 
   return Response.json({
     ok: true,
-    delivered: delivery.delivered,
+    delivered: delivery.delivered || crmDelivery.delivered,
     trackingQueued,
     routingEnsured: routing.ok && routing.tagged === true,
   });

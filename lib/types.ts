@@ -4,6 +4,9 @@
 // on-device (MediaPipe) — the model only ever returns zone-level figures.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { SpotTypeKey } from "./spot-types";
+export type { SpotTypeKey } from "./spot-types";
+
 /** The four suitability outcomes. Never a flat "you don't qualify". */
 export type Bucket = "great" | "good" | "consultation" | "alternative";
 
@@ -61,6 +64,10 @@ export interface AnalyzeResult extends ScoreResult {
   zoneImprovement: Record<string, number>;
   /** False when the whole face isn't clearly visible and evenly lit — prompt a retake. */
   framingAdequate: boolean;
+  /** The kind of pigmentation the photo appears most consistent with; null when unclear. */
+  spotType?: SpotTypeKey | null;
+  /** A second kind, only when the photo clearly shows a mix. */
+  secondarySpotType?: SpotTypeKey | null;
   /** Insights-database id for this analysis; ties the lead, clicks and booking to it. */
   analysisId?: string;
 }
@@ -100,6 +107,8 @@ export interface PhotoAssessment {
   zoneImprovement: Record<string, number>;
   /** False when the whole face isn't clearly visible and evenly lit — prompt a retake. */
   framingAdequate: boolean;
+  spotType: SpotTypeKey | null;
+  secondarySpotType: SpotTypeKey | null;
 }
 
 /** Browser-readable attribution only. Conversion identity is server-owned. */
@@ -145,6 +154,13 @@ export interface LeadRequest {
   imageProcessingConsentAt: string;
   /** Explicit choice for Meta advertising measurement. */
   metaTrackingConsent: boolean;
+  /** The client ticked "I'm requesting a free consultation" before the scan. */
+  consultationContactConsent?: true;
+  consultationContactConsentAt?: string;
+  /** The exact wording they agreed to, kept on the CRM contact as evidence. */
+  consultationContactStatement?: string;
+  consultationContactConsentVersion?: string;
+  preferredCallTime?: "morning" | "afternoon" | "evening";
   /** Optional browser attribution; ignored unless Meta tracking is accepted. */
   attribution?: ClientMetaAttribution;
 }

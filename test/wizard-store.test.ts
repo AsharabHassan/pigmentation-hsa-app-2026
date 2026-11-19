@@ -50,11 +50,17 @@ describe("wizard-store transitions", () => {
     );
     s().setImage("b64", "image/jpeg");
     s().beginScan();
+    expect(s().step).toBe("consent"); // blocked: no consultation request yet
+
+    s().setContactConsent(true);
+    expect(s().contactConsentAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    s().beginScan();
     expect(s().step).toBe("scan");
   });
 
   it("completeScan() moves from scan straight to the lead gate", () => {
     s().setImageConsent(true);
+    s().setContactConsent(true);
     s().setImage("b64", "image/jpeg");
     s().beginScan();
     s().completeScan();

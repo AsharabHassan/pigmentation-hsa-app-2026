@@ -54,6 +54,29 @@ function buildOptions(overrides: Record<string, unknown> = {}) {
 }
 
 describe("buildGhlPayload", () => {
+  it("records the consultation call request as evidence and tags the contact", () => {
+    const payload = buildGhlPayload(lead, result, buildOptions({
+      consultationContact: {
+        at: "2026-06-04T09:50:00.000Z",
+        statement: "I’m requesting a free consultation. Please call, text or WhatsApp me…",
+        version: "consultation-contact-v1",
+      },
+      preferredCallTime: "evening",
+    }));
+    expect(payload).toMatchObject({
+      consultationContactConsent: true,
+      consultationContactConsentAt: "2026-06-04T09:50:00.000Z",
+      consultationContactConsentVersion: "consultation-contact-v1",
+      preferredCallTime: "evening",
+    });
+    expect(payload.tags).toEqual(
+      expect.arrayContaining(["hsa-consultation-call-requested", "hsa-call-evening"]),
+    );
+    const without = buildGhlPayload(lead, result, buildOptions());
+    expect(without.consultationContactConsent).toBe(false);
+    expect(without.tags).not.toContain("hsa-consultation-call-requested");
+  });
+
   it("maps CRM contact, result and separate consent fields", () => {
     const payload = buildGhlPayload(lead, result, buildOptions());
     expect(payload).toMatchObject({

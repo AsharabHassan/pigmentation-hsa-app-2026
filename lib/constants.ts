@@ -1,5 +1,5 @@
 import type { Bucket, ClinicLocationKey } from "./types";
-import { PRICE_PER_SESSION } from "./finance";
+import { COURSE_PRICE, COURSE_SESSIONS, PRICE_PER_SESSION } from "./finance";
 export type { ClinicLocationKey } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,6 +174,9 @@ export interface BucketMeta {
   /** Brand token used to theme the verdict (CSS var name without `--color-`). */
   accent: "peach" | "sage";
   ctaLabel: string;
+  /** What the CLIENT sees at the top of the report and on the PDF cover.
+   *  (`label` stays as-is: it is sent to GoHighLevel and used by the team.) */
+  chip: string;
   /** Indicative gauge band centre for this bucket (0–100). */
   gaugeBand: [number, number];
 }
@@ -181,24 +184,27 @@ export interface BucketMeta {
 export const BUCKET_META: Record<Bucket, BucketMeta> = {
   great: {
     label: "Strong candidate",
+    chip: "Great match for our Signature Treatment",
     headline: "Your skin shows exactly what this treatment targets",
     blurb:
-      "The pigmentation visible in your photo is just the kind our Signature Pigmentation Removal Treatment is designed to fade.",
+      "The pigmentation visible in your photo is just the kind our new Signature Pigmentation Treatment is designed to fade.",
     accent: "peach",
     ctaLabel: "Book Your Free Online Consultation",
     gaugeBand: [82, 100],
   },
   good: {
     label: "Good candidate",
+    chip: "Good match for our Signature Treatment",
     headline: "Your skin tone could respond beautifully",
     blurb:
-      "Your photo shows the kind of subtle unevenness that responds well to our protocol — a consultation will confirm the detail.",
+      "Your photo shows the kind of subtle unevenness that responds well to our new pigmentation treatment — a consultation will confirm the detail.",
     accent: "peach",
     ctaLabel: "Book Your Free Online Consultation",
     gaugeBand: [68, 88],
   },
   consultation: {
     label: "Consultation recommended",
+    chip: "Let's look at your skin together",
     headline: "Let's look at your skin together",
     blurb:
       "Your skin is best reviewed by our doctor-led team before we can be sure of the right plan. That's completely normal.",
@@ -208,6 +214,7 @@ export const BUCKET_META: Record<Bucket, BucketMeta> = {
   },
   alternative: {
     label: "Let's explore your options",
+    chip: "Let's explore your options",
     headline: "Another treatment may suit you better",
     blurb:
       "Your goals may be better met by a different approach. A free online consultation is the best way to find the right one.",
@@ -235,44 +242,65 @@ export const TREATMENT_CONCERNS = [
   "Stubborn facial pigmentation",
 ] as const;
 
-/** The clinic's 3-step Signature Pigmentation Removal Treatment. */
+/**
+ * The clinic's Signature Pigmentation Treatment: the 3R Programme
+ * (Reduce, Regulate, Reverse). Reverse is optional and advanced.
+ * House rules: never name a product or brand, never call it a "peel", never
+ * claim "no needles" or "painless" for the spicule step.
+ */
+export const PROGRAMME_NAME = "3R Programme";
+
 export const PROTOCOL_STEPS = [
   {
     step: "01",
-    title: "VirtueRF Microneedling",
+    title: "Reduce · the pigment you can see",
     blurb:
-      "Radiofrequency energy delivered through ultra-fine microneedles helps break down excess pigment and calm the overactive pigment-producing cells, while renewing the skin from within.",
+      "A topical repair therapy with healing ingredients, including a colostrum-based complex. It lifts surface pigment while it helps the skin heal. Healthy, repaired skin responds better to treatment.",
   },
   {
     step: "02",
-    title: "Laser",
+    title: "Regulate · how pigment is made",
     blurb:
-      "Targeted laser light is absorbed by darker pigment, helping to break it up so the skin can clear it naturally — chosen and set by your practitioner for your skin tone.",
+      "Microscopic spicules carry pigment-regulating ingredients to the junction between the two top layers of your skin, where the pigment cells sit. They help bring overactive pigment production back towards normal. They also help strengthen that layer, so less pigment leaks deeper.",
   },
   {
     step: "03",
-    title: "Mesotherapy",
+    title: "Reverse · optional advanced step",
     blurb:
-      "A tailored cocktail of vitamins, antioxidants and pigment-reducing agents, delivered where your skin needs it most.",
+      "An advanced regenerative therapy for those who want to go further. It is optional and is discussed with your consultant. Most people choose the first two steps.",
   },
 ] as const;
 
-/** Minimum course the clinic recommends; the exact number is set at consultation. */
+/** The core message, in the medical director's framing. */
+export const PROGRAMME_PROMISE = "Repair, don't damage. From the surface to the cell.";
+
+/** Plain-language mechanism: why pigmentation returns and what the programme does about it. */
+export const PROGRAMME_MECHANISM =
+  "Pigment cells sit at the junction between the two top layers of your skin. In many people that junction is weak. Extra pigment then leaks into the deeper skin, which is why it keeps coming back. Older approaches attack the surface and add more damage. We help regulate how pigment is made and strengthen that layer. Your skin is already damaged. It needs repairing, not more damage.";
+
+/** Shown near result claims. */
+export const RESULTS_VARY = "Results vary. A consultation is needed to confirm suitability.";
+
+/** How the clinic frames the course; the exact programme is set at consultation. */
 export const SESSIONS_GUIDE = {
-  minimum: 2,
-  note: "Most patients need at least 2 sessions. Your practitioner confirms the right number for your skin at your consultation.",
+  /** Sessions in the usual starting course. */
+  usual: 4,
+  course: "4 sessions, two weeks apart",
+  note: "Most people start with a course of 4 sessions, two weeks apart. Some people need 6 or 8. Our doctor confirms your programme at your consultation.",
 } as const;
 
 /** Supporting elements of the protocol, shown beneath the 3 steps. */
 export const PROTOCOL_SUPPORT =
-  "Supported by brightening skincare — Alpha Arbutin, Vitamin C, Niacinamide, Tranexamic Acid — and optional IV brightening drips.";
+  "Supported at home by a clinic-prescribed repair routine (tranexamic acid, vitamin C, ferulic acid and hyaluronic acid), with daily SPF 50 to protect your result.";
 
-/** Indicative UK pricing guidance (clinic-stated; flexible payment plans). */
+/** UK pricing (clinic-stated; flexible payment plans). */
 export const PRICE_GUIDE = {
-  // Starting price for ONE session — most patients need at least two.
+  // Price for ONE session. (Key kept as `from` for existing callers.)
   from: `£${PRICE_PER_SESSION} per session`,
-  note: "Indicative — your exact plan is confirmed at consultation. Flexible payment plans available.",
+  course: `£${COURSE_PRICE} for a course of ${COURSE_SESSIONS} sessions`,
+  line: `£${PRICE_PER_SESSION} per session, or £${COURSE_PRICE} for a course of ${COURSE_SESSIONS} sessions`,
+  note: "Your exact programme and price are confirmed at consultation. Flexible payment plans available.",
 } as const;
 
 export const DISCLAIMER =
-  "This tool offers general cosmetic information to help you prepare for a consultation. It is not a medical assessment or diagnosis, and it cannot identify the type or cause of any pigmentation. Suitability and safety are confirmed by a qualified practitioner. If any mark on your skin is new, changing or worrying you, please have it checked by a doctor.";
+  "This tool offers general information to help you prepare for a consultation. It is for informational purposes only and is not a diagnosis — any pigmentation type shown is an indication from a single photo, and only a qualified practitioner can confirm it, along with your suitability and safety. If any mark on your skin is new, changing or worrying you, please have it checked by a doctor.";

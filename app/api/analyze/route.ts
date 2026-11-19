@@ -6,6 +6,8 @@ import { deviceFromUserAgent, visitContextSchema } from "@/lib/insights";
 import { recordAnalysis } from "@/lib/insights-store";
 
 export const runtime = "nodejs";
+// SkinScan (own model on the CPU droplet, ~20s) + Claude run back to back.
+export const maxDuration = 90;
 
 // POST /api/analyze — photo-only AI suitability read.
 // Claude assesses the selfie, chooses the cosmetic outcome, and writes the copy.

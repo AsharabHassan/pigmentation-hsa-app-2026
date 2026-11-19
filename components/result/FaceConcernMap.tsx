@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { ScanFace, Sparkles } from "lucide-react";
+import { ScanFace, Sparkles, MoveHorizontal } from "lucide-react";
 import { useWizard } from "@/store/wizard-store";
 import {
   regionMarkers,
@@ -16,6 +16,9 @@ import {
   type RegionKey,
 } from "@/lib/face-regions";
 import { cropImage } from "@/lib/crop";
+import { pigmentFadePreview } from "@/lib/preview";
+import { aiAfterImage } from "@/lib/ai-preview";
+import { BeforeAfterSlider } from "@/components/result/BeforeAfterSlider";
 import { useLightFx } from "@/lib/use-light-fx";
 import { EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -48,6 +51,7 @@ export function FaceConcernMap() {
   const zonesObscured = useWizard((s) => s.result?.zonesObscured);
   const zoneSeverity = useWizard((s) => s.result?.zoneSeverity);
   const zoneImprovement = useWizard((s) => s.result?.zoneImprovement);
+  const spotType = useWizard((s) => s.result?.spotType ?? null);
   const light = useLightFx();
 
   const isCovered = (r: RegionKey) =>
@@ -81,13 +85,23 @@ export function FaceConcernMap() {
       ...CORE,
       ...(jawlineWanted ? ["jawline" as const] : []),
     ];
+    // Their pigmentation first: most visible areas lead (and get the low numbers),
+    // then other flagged areas, then the rest; covered areas go last.
+    const rank = (r: RegionKey) =>
+      (zonesObscured?.includes(r) ? -1000 : 0) +
+      (zoneSeverity?.[r] ?? (flaggedSet.has(r) ? 50 : 0));
     return REGION_ORDER.filter(
       (r) => wanted.includes(r) && regionMarkers(r, landmarks).length > 0,
-    );
+    ).sort((a, b) => rank(b) - rank(a));
   }, [landmarks, flaggedSet, zoneSeverity, zonesObscured]);
 
   const [mapped, setMapped] = useState<Mapped[]>([]);
   const [active, setActive] = useState<RegionKey | null>(null);
+  // The zone whose "see the difference" preview is open — set by tap, not hover.
+  const [selected, setSelected] = useState<RegionKey | null>(null);
+  const [previews, setPreviews] = useState<
+    Partial<Record<RegionKey, { before: string; after: string; source: "ai" | "device" }>>
+  >({});
   const cardRefs = useRef<Partial<Record<RegionKey, HTMLDivElement | null>>>({});
 
   useEffect(() => {
@@ -130,6 +144,57 @@ export function FaceConcernMap() {
     };
   }, [imageBase64, imageMediaType, landmarks, regions, flaggedSet]);
 
+  const previewable = (m: Mapped) => Boolean(m.crop) && !isCovered(m.region);
+  const shown =
+    mapped.find((m) => m.region === selected && previewable(m)) ??
+    mapped.find(previewable) ?? // already ordered most-affected first
+    null;
+
+  const shownRegion = shown?.region ?? null;
+  const haveShownPreview = shownRegion ? Boolean(previews[shownRegion]) : true;
+  const shownMarkers = shown ? JSON.stringify(shown.markers) : "";
+  const shownCrop = shown?.crop ?? null;
+  useEffect(() => {
+    if (!shownRegion || !shownMarkers || haveShownPreview || !imageBase64) return;
+    const markers = JSON.parse(shownMarkers) as NormEllipse[];
+    let cancelled = false;
+    (async () => {
+      // A true close-up of ONE side: the largest (most camera-facing) marker,
+      // padded around its ellipse — not the box spanning both cheeks.
+      const e = [...markers].sort((a, b) => b.rx * b.ry - a.rx * a.ry)[0];
+      // A close-up centred on the marker but kept INSIDE the face outline, so it
+      // never shows background or slides onto the nose/lips at the face edge.
+      const xs = landmarks!.map((p) => p.x);
+      const ys = landmarks!.map((p) => p.y);
+      const fx0 = Math.min(...xs), fx1 = Math.max(...xs);
+      const fy0 = Math.min(...ys), fy1 = Math.max(...ys);
+      const fw = fx1 - fx0;
+      const half = Math.min(Math.max(Math.max(e.rx, e.ry) * 1.6, fw * 0.12), fw * 0.2);
+      const cx = Math.min(Math.max(e.cx, fx0 + half), fx1 - half);
+      const cy = Math.min(Math.max(e.cy, fy0 + half), fy1 - half);
+      const rect = { x: Math.max(0, cx - half), y: Math.max(0, cy - half), w: half * 2, h: half * 2 };
+      const before = (await cropImage(imageBase64, imageMediaType, rect)) ?? shownCrop;
+      if (!before) return;
+      // Preferred: the same zone cropped from the AI-edited full-face photo
+      // (validated against the original in lib/ai-preview.ts).
+      // The fade strength is set per pigmentation type in the edit prompt.
+      const ai = await aiAfterImage(imageBase64, imageMediaType, spotType, regions);
+      let after = ai ? await cropImage(ai.base64, ai.mediaType, rect) : null;
+      let source: "ai" | "device" = "ai";
+      if (!after) {
+        // Fallback: on-device fade. Validated on real photos across skin tones:
+        // 0.85–1.0 is clearly visible yet natural.
+        const strength = Math.min(1, Math.max(0.85, (zoneImprovement?.[shownRegion] ?? 60) / 100 + 0.3));
+        after = await pigmentFadePreview(before, strength);
+        source = "device";
+      }
+      if (!cancelled && after) setPreviews((p) => ({ ...p, [shownRegion]: { before, after, source } }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [shownRegion, shownMarkers, shownCrop, haveShownPreview, imageBase64, imageMediaType, zoneImprovement, zoneSeverity, landmarks, spotType, regions]);
+
   if (!dataUrl || mapped.length === 0) return null;
 
   const focusCount = mapped.filter((m) => m.flagged).length;
@@ -148,14 +213,14 @@ export function FaceConcernMap() {
       <div className="flex items-center justify-center gap-2 text-center">
         <ScanFace size={15} className="text-peach" />
         <h3 className="font-serif text-xl text-heading sm:text-2xl">
-          Your pigmentation map
+          Where your pigmentation shows
         </h3>
       </div>
       <p className="mx-auto mt-1 max-w-md text-center text-[13px] leading-relaxed text-body/80">
-        Mapped from your own photo, on your device.
+        Mapped from your own photo, on your device — your most visible areas are numbered first.
         {focusCount > 0
-          ? " The highlighted zones are where the treatment can make the most difference for you."
-          : " Each marker shows a zone the treatment can brighten — confirmed at your consultation."}
+          ? " Tap any area to see it close up and preview the difference."
+          : " Tap any area to see it close up — confirmed at your consultation."}
       </p>
 
       {/* ── The map ─────────────────────────────────────────────────────── */}
@@ -244,6 +309,7 @@ export function FaceConcernMap() {
                 type="button"
                 onClick={() => {
                   setActive(p.region);
+                  setSelected(p.region);
                   cardRefs.current[p.region]?.scrollIntoView({
                     behavior: "smooth",
                     block: "center",
@@ -304,9 +370,12 @@ export function FaceConcernMap() {
               transition={{ delay: 0.2 + i * 0.08, duration: 0.5, ease: EASE }}
               onMouseEnter={() => setActive(m.region)}
               onMouseLeave={() => setActive(null)}
-              onClick={() => setActive(m.region)}
+              onClick={() => {
+                setActive(m.region);
+                setSelected(m.region);
+              }}
               className={cn(
-                "flex cursor-default gap-3 rounded-2xl border p-3 transition-colors",
+                "flex cursor-pointer gap-3 rounded-2xl border p-3 transition-colors",
                 isActive
                   ? "border-peach/60 bg-peach/[0.07]"
                   : "border-white/10 bg-white/[0.04]",
@@ -409,6 +478,51 @@ export function FaceConcernMap() {
           );
         })}
       </div>
+
+      {/* ── See the difference: illustrative preview on their own skin ─── */}
+      {shown && (
+        <motion.div
+          key={shown.region}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE }}
+          className="mt-6 rounded-[1.75rem] border border-peach/30 bg-peach/[0.05] p-5"
+        >
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-peach">
+            <MoveHorizontal size={14} /> See the difference
+          </p>
+          <h4 className="mt-2 font-serif text-xl text-heading">
+            Your {REGION_LABEL[shown.region].toLowerCase()} with our Signature Treatment
+          </h4>
+          <div className="mt-4 mx-auto max-w-[320px]">
+            {previews[shown.region] ? (
+              <BeforeAfterSlider
+                beforeSrc={previews[shown.region]!.before}
+                afterSrc={previews[shown.region]!.after}
+                area={REGION_LABEL[shown.region].toLowerCase()}
+                ratio="1 / 1"
+              />
+            ) : (
+              <div className="grid aspect-square place-items-center rounded-2xl bg-white/[0.04] px-6 text-center text-sm text-body/70">
+                Creating your personal preview — this can take up to a minute…
+              </div>
+            )}
+          </div>
+          <p className="mt-3 text-center text-[13px] leading-relaxed text-body">
+            Drag to compare. {REGION_COPY[shown.region].blurb}
+          </p>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-body/60">
+            {previews[shown.region]?.source === "ai"
+              ? "AI simulation of the kind of improvement a first course may bring for your pigmentation type, created from your own photo. It is an illustration, not a prediction or a promise. Individual results vary."
+              : "Illustration only. A simulation of pigment fading on your photo, not a prediction or a promise. Individual results vary."}
+          </p>
+          {mapped.filter(previewable).length > 1 && (
+            <p className="mt-3 text-center text-[12px] text-peach">
+              Tap another area on your map to preview it.
+            </p>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }

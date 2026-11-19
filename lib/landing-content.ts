@@ -1,5 +1,5 @@
 import type { ClinicLocationKey } from "./types";
-import { PRICE_PER_SESSION } from "./finance";
+import { COURSE_PRICE, COURSE_SESSIONS, PRICE_PER_SESSION } from "./finance";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Copy for the Google Ads landing pages (/london/pigmentation-removal and
@@ -56,21 +56,26 @@ const sharedFaqs = (city: string): LandingFaq[] => [
   {
     question: "How does the free AI pigmentation analysis work?",
     answer:
-      "You take or upload one selfie on your phone. In about 60 seconds our AI maps visible dark spots and uneven tone across six areas of your face and gives you a personalised cosmetic report, which is also emailed to you as a PDF. It is an informational guide, not a medical diagnosis — a practitioner confirms your suitability at your free online consultation.",
+      "Upload a clear selfie. The AI compares visible patterns with six pigmentation categories, suggests the closest pattern where the photo supports it, and maps the affected facial areas. Your report explains that suggested pattern and questions to discuss with our team. Lighting, makeup and mixed patterns can limit the result; it is a cosmetic guide, not a diagnosis. A clinician confirms the type and suitable options at your free consultation.",
   },
   {
     question: "What does the pigmentation treatment involve?",
     answer:
-      "Our Signature Pigmentation Removal Treatment is a three-step, doctor-led protocol: VirtueRF Microneedling to help break down excess pigment, targeted Laser selected for your skin tone, and Mesotherapy with vitamins, antioxidants and pigment-reducing agents. It is supported by brightening skincare you continue at home.",
+      "Our Signature Pigmentation Treatment follows our doctor-led 3R Programme. Reduce: a topical repair therapy with healing ingredients lifts surface pigment while it helps the skin heal. Regulate: microscopic spicules carry pigment-regulating ingredients to the junction between the two top layers of your skin, where the pigment cells sit. This helps bring pigment production back towards normal and helps strengthen that layer, so less pigment leaks deeper. Reverse is an optional, advanced step that your consultant can discuss with you. We repair the skin. We do not damage it. Results vary. A consultation is needed to confirm suitability.",
+  },
+  {
+    question: "Why does my pigmentation keep coming back?",
+    answer:
+      "Pigment cells sit at the junction between the two top layers of your skin. In many people that junction is weak, so extra pigment leaks into the deeper skin. Treatments that only attack the surface do not change this, so the pigment returns. Our 3R Programme works from the surface to the cell. It reduces the pigment you can see, then helps regulate how pigment is made and strengthen that layer. Results vary. A consultation is needed to confirm suitability.",
   },
   {
     question: "How many sessions will I need?",
     answer:
-      "Most patients need at least 2 sessions, and results build gradually over the course. The right number depends on how deep and widespread your pigmentation is, so your practitioner confirms it at your consultation.",
+      "Most people start with a course of 4 sessions, two weeks apart. Some people need 6 or 8. It depends on how deep and widespread your pigmentation is, so our doctor confirms your programme at your consultation.",
   },
   {
     question: `How much does pigmentation removal cost in ${city}?`,
-    answer: `Treatment starts from £${PRICE_PER_SESSION} per session. Because most people need at least two sessions, a course typically starts from £${PRICE_PER_SESSION * 2}. Your exact plan and price are confirmed at your free consultation, with no obligation.`,
+    answer: `Treatment is £${PRICE_PER_SESSION} per session, or £${COURSE_PRICE} for a course of ${COURSE_SESSIONS} sessions. Most people start with a course of ${COURSE_SESSIONS}, two weeks apart. Your exact programme and price are confirmed at your free consultation, with no obligation.`,
   },
   {
     question: "Can I spread the cost?",
@@ -80,12 +85,12 @@ const sharedFaqs = (city: string): LandingFaq[] => [
   {
     question: "Is the treatment suitable for darker skin tones?",
     answer:
-      "Pigmentation can be treated across a wide range of skin tones, but the settings matter. That is why the laser step is chosen and set by your practitioner for your skin, and why a consultation always comes first.",
+      "Our programme is built to repair the skin, not to damage it, and it does not use laser heat. It is designed to suit all skin tones, including deeper skin that can react to heat-based treatments. Your practitioner still confirms suitability at your consultation, which always comes first.",
   },
   {
     question: "Is there any downtime?",
     answer:
-      "Most people notice some redness and warmth for a day or two, and treated spots can look slightly darker before they fade. Daily SPF is essential during your course. Your practitioner will give you aftercare advice specific to your skin.",
+      "Some people notice mild redness or tingling for a short while after a session. Your practitioner explains what to expect for your skin at your consultation. Daily SPF 50 is essential during your programme, and you are given aftercare advice specific to your skin.",
   },
   {
     question: "What happens on the free online consultation?",
@@ -119,11 +124,6 @@ const KHAN: LandingDoctor = {
   bio: "More than 23 years of clinical experience, over 20 of them as a GP in NHS and private practice.",
   photo: "/team/mazhar-khan.webp",
 };
-const FAISAL: LandingDoctor = {
-  name: "Dr Faisal",
-  role: "Aesthetic Medicine",
-  bio: "Focuses on skin tightening and rejuvenation, including VirtueRF Microneedling — the first step of our pigmentation protocol.",
-};
 const AL_NAKIB: LandingDoctor = {
   name: "Dr Khalil Al-Nakib",
   role: "Consultant Plastic Surgeon",
@@ -140,29 +140,28 @@ const GLASGOW_PHOTOS: LandingPhoto[] = [
 export const LANDING_CONTENT: Record<ClinicLocationKey, LandingContent> = {
   london: {
     path: "/london/pigmentation-removal",
-    analysisPath: "/",
+    analysisPath: "/camera",
     landingId: "ads-london-pigmentation-removal",
     googleRating: { score: "4.6", reviews: 219 },
     heroPhoto: {
       src: "/clinic/london-laser-treatment.webp",
-      alt: "Laser treatment in progress at our London clinic",
+      alt: "Treatment in progress at our London clinic",
       width: 1200,
       height: 1420,
     },
     clinicPhotos: [],
-    doctors: [MEHDI, AYDA, FAISAL, KHAN],
+    doctors: [MEHDI, AYDA, KHAN],
     metaTitle:
       "Pigmentation Removal London | Free AI Skin Analysis · Harley Street Aesthetics",
-    metaDescription: `Doctor-led pigmentation removal at 10 Harley Street, London. Map your dark spots free in 60 seconds with our AI skin analysis, then book a free online consultation. From £${PRICE_PER_SESSION} per session, 0% payment plans.`,
-    eyebrow: "Pigmentation removal · 10 Harley Street, London",
+    metaDescription: `Doctor-led pigmentation removal at 10 Harley Street, London. Map your dark spots free in 60 seconds with our AI skin analysis, then book a free online consultation. £${PRICE_PER_SESSION} per session or £${COURSE_PRICE} for a course of ${COURSE_SESSIONS}. 0% payment plans.`,
+    eyebrow: "Doctor-led · 10 Harley Street, London",
     h1Lead: "Pigmentation removal in London.",
-    h1Accent: "See your skin mapped first, free.",
+    h1Accent: "Understand your pigmentation pattern.",
     intro:
-      "Dark spots, sun damage and uneven tone mapped across your face in 60 seconds — then a doctor-led plan to fade them at our Harley Street clinic.",
+      "Is it a melasma-like pattern, sun-related spots or marks after blemishes? Your free AI photo analysis suggests a visible pattern, maps the areas affected and creates your personal report. Discuss what it means with our London clinicians before choosing treatment.",
     localProof: [
       "10 Harley Street, W1G 9PF",
-      "Doctor-led clinic",
-      `From £${PRICE_PER_SESSION} per session`,
+      `£${PRICE_PER_SESSION} per session, or ${COURSE_SESSIONS} for £${COURSE_PRICE}`,
       "0% payment plans",
     ],
     aboutHeading: "Doctor-led pigmentation treatment on Harley Street",
@@ -174,7 +173,7 @@ export const LANDING_CONTENT: Record<ClinicLocationKey, LandingContent> = {
   },
   glasgow: {
     path: "/glasgow/pigmentation-removal",
-    analysisPath: "/glasgow",
+    analysisPath: "/glasgow/camera",
     landingId: "ads-glasgow-pigmentation-removal",
     googleRating: { score: "4.4" },
     heroPhoto: {
@@ -187,16 +186,15 @@ export const LANDING_CONTENT: Record<ClinicLocationKey, LandingContent> = {
     doctors: [AL_NAKIB, AYDA, MEHDI],
     metaTitle:
       "Pigmentation Removal Glasgow | Free AI Skin Analysis · Harley Street Aesthetics",
-    metaDescription: `Doctor-led pigmentation removal on Ingram Street, Glasgow. Map your dark spots free in 60 seconds with our AI skin analysis, then book a free online consultation. From £${PRICE_PER_SESSION} per session, 0% payment plans.`,
-    eyebrow: "Pigmentation removal · Ingram Street, Glasgow",
+    metaDescription: `Doctor-led pigmentation removal on Ingram Street, Glasgow. Map your dark spots free in 60 seconds with our AI skin analysis, then book a free online consultation. £${PRICE_PER_SESSION} per session or £${COURSE_PRICE} for a course of ${COURSE_SESSIONS}. 0% payment plans.`,
+    eyebrow: "Doctor-led · Ingram Street, Glasgow",
     h1Lead: "Pigmentation removal in Glasgow.",
-    h1Accent: "See your skin mapped first, free.",
+    h1Accent: "Understand your pigmentation pattern.",
     intro:
-      "Dark spots, sun damage and uneven tone mapped across your face in 60 seconds — then a doctor-led plan to fade them at our Glasgow city-centre clinic.",
+      "Is it a melasma-like pattern, sun-related spots or marks after blemishes? Your free AI photo analysis suggests a visible pattern, maps the areas affected and creates your personal report. Discuss what it means with our Glasgow clinicians before choosing treatment.",
     localProof: [
       "Ingram House, 227 Ingram Street, G1 1DA",
-      "Doctor-led clinic",
-      `From £${PRICE_PER_SESSION} per session`,
+      `£${PRICE_PER_SESSION} per session, or ${COURSE_SESSIONS} for £${COURSE_PRICE}`,
       "0% payment plans",
     ],
     aboutHeading: "Doctor-led pigmentation treatment in Glasgow city centre",
@@ -216,9 +214,9 @@ export const LANDING_STEPS = [
   },
   {
     step: "02",
-    title: "AI maps your pigmentation",
+    title: "Understand your suggested pattern",
     blurb:
-      "Six facial zones analysed in about 60 seconds, with your own personalised report.",
+      "See the closest visible pattern, where it appears and what to ask your clinician — with uncertainty explained when the photo is unclear.",
   },
   {
     step: "03",

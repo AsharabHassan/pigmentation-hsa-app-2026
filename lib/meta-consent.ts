@@ -1,7 +1,7 @@
 export type AdvertisingConsent = "granted" | "denied" | "unset";
 
 export const ADVERTISING_CONSENT_STORAGE_KEY =
-  "hsa:advertising-consent:v1";
+  "hsa:advertising-consent:v2";
 
 export const ADVERTISING_CONSENT_CHANGE_EVENT =
   "hsa:advertising-consent-change";

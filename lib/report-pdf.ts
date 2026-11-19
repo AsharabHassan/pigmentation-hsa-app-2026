@@ -63,6 +63,33 @@ export interface ReportInput {
   /** "Spread the cost" illustration rows + its small print. */
   finance?: { heading: string; rows: { name: string; detail: string }[]; note: string };
   disclaimer: string;
+  /** The pigmentation type the photo appeared consistent with, and its treatment plan. */
+  spotType?: ReportSpotType | null;
+  /** Closing statement printed after the booking panel. */
+  endDisclaimer?: string;
+  /** The doctors' recommendation that sells the Signature Treatment (strong/good candidates only). */
+  recommendation?: ReportRecommendation | null;
+}
+
+export interface ReportRecommendation {
+  title: string;
+  subtitle: string;
+  lead: string;
+  comparisons: { alternative: string; limitation: string; ours: string }[];
+  whyClinic: string[];
+  priceLine: string;
+  smallPrint: string;
+}
+
+export interface ReportSpotType {
+  name: string;
+  commonName: string;
+  what: string;
+  cause: string;
+  /** One sentence on a second type, when the photo showed a mix. */
+  secondaryNote?: string;
+  steps: { step: string; title: string; how: string; why: string }[];
+  outlook: string;
 }
 
 const PW = 210;
@@ -177,73 +204,38 @@ export function buildReportPdf(input: ReportInput): Blob {
     align: "center",
   });
 
-  // score dial — a premium gold progress arc sweeping from 12 o'clock, not just
-  // a lone dot on a dull ring. Drawn as many short segments so we can taper the
-  // colour from deep gold into light gold and give it rounded ends + an end knob.
+  // Their pigmentation — what they have and where it shows most — leads the cover.
   const cx = PW / 2;
-  const cy = 86;
-  const rr = 20;
-  const score = Math.max(0, Math.min(100, input.score));
-  const START = -Math.PI / 2; // 12 o'clock
-  const END = START + (score / 100) * Math.PI * 2;
-
-  // faint full track
-  doc.setDrawColor(...P.line);
-  doc.setLineWidth(1.1);
-  doc.circle(cx, cy, rr, "S");
-
-  // subtle tick hairlines
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-    doc.setDrawColor(...P.line);
-    doc.setLineWidth(0.3);
-    doc.line(
-      cx + Math.cos(a) * (rr + 2.5),
-      cy + Math.sin(a) * (rr + 2.5),
-      cx + Math.cos(a) * (rr + 4),
-      cy + Math.sin(a) * (rr + 4),
-    );
-  }
-
-  // gold progress arc (deep gold → light gold, rounded caps)
-  doc.setLineWidth(2.3);
-  doc.setLineCap(1); // round
-  const SEG = Math.max(24, Math.round((score / 100) * 90));
-  for (let i = 0; i < SEG; i++) {
-    const t = (i + 0.5) / SEG;
-    const a0 = START + (i / SEG) * (END - START);
-    const a1 = START + ((i + 1) / SEG) * (END - START);
-    doc.setDrawColor(
-      Math.round(P.gold[0] + (P.goldLt[0] - P.gold[0]) * t),
-      Math.round(P.gold[1] + (P.goldLt[1] - P.gold[1]) * t),
-      Math.round(P.gold[2] + (P.goldLt[2] - P.gold[2]) * t),
-    );
-    doc.line(
-      cx + Math.cos(a0) * rr,
-      cy + Math.sin(a0) * rr,
-      cx + Math.cos(a1) * rr,
-      cy + Math.sin(a1) * rr,
-    );
-  }
-  doc.setLineCap(0); // reset to butt
-
-  // end knob — a bright filled dot ringed in gold
-  const kx = cx + Math.cos(END) * rr;
-  const ky = cy + Math.sin(END) * rr;
-  doc.setFillColor(...P.goldLt);
-  doc.circle(kx, ky, 2.3, "F");
-  doc.setDrawColor(...P.gold);
-  doc.setLineWidth(0.5);
-  doc.circle(kx, ky, 2.3, "S");
-
-  doc.setFont("times", "normal");
-  doc.setFontSize(30);
-  doc.setTextColor(...P.heading);
-  doc.text(String(input.score), cx, cy + 2, { align: "center" });
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(5.6);
+  doc.setFontSize(7);
   doc.setTextColor(...P.gold);
-  centerSpaced("SUITABILITY", cx, cy + 9, 1);
+  centerSpaced("YOUR PIGMENTATION", cx, 70, 1.5);
+  doc.setFont("times", "normal");
+  doc.setFontSize(26);
+  doc.setTextColor(...P.heading);
+  doc.text(input.spotType ? input.spotType.name : "Areas of uneven tone", cx, 82, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...P.gold);
+  doc.text(
+    input.spotType ? `Often called ${input.spotType.commonName}` : "Your practitioner confirms the exact type",
+    cx,
+    89,
+    { align: "center" },
+  );
+  const topAreas = input.areas
+    .filter((a) => !a.covered && (typeof a.severity === "number" || a.flagged))
+    .slice(0, 3)
+    .map((a) => (typeof a.severity === "number" ? `${a.title} ${a.severity}%` : a.title));
+  if (topAreas.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...P.body);
+    doc.text(`Most visible: ${topAreas.join("   ·   ")}`, cx, 99, { align: "center" });
+  }
+  doc.setDrawColor(...P.gold);
+  doc.setLineWidth(0.4);
+  doc.line(cx - 14, 107, cx + 14, 107);
 
   // verdict + headline
   doc.setFont("helvetica", "bold");
@@ -306,107 +298,236 @@ export function buildReportPdf(input: ReportInput): Blob {
   runningHeader();
   y = 28;
 
-  if (input.usedPhoto && input.faceImageDataUrl) {
-    // Fit the photo into a max box preserving its true aspect ratio — never
-    // stretch it (a tall phone screenshot must stay tall, not squashed).
-    const aspect =
-      input.faceImageAspect && input.faceImageAspect > 0
-        ? input.faceImageAspect
-        : 0.8;
-    const maxH = 96;
-    const maxW = Math.min(CW, 118);
-    let imgW = maxH * aspect;
-    let imgH = maxH;
-    if (imgW > maxW) {
-      imgW = maxW;
-      imgH = maxW / aspect;
+  // Wrapped paragraph with an optional bold lead-in label on its own line.
+  const paragraph = (label: string | null, text: string, x: number, width: number) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const lines = doc.splitTextToSize(text, width) as string[];
+    ensure((label ? 4.6 : 0) + lines.length * 4.3 + 3);
+    if (label) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(...P.goldLt);
+      doc.text(label.toUpperCase(), x, y, { charSpace: 0.3 });
+      y += 4.6;
     }
-    ensure(imgH + 18);
-    sectionTitle("Your pigmentation map", y);
-    y += 9;
-    const ix = (PW - imgW) / 2;
-    doc.setDrawColor(...P.gold);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(ix - 1.5, y - 1.5, imgW + 3, imgH + 3, 2, 2, "S");
-    try {
-      doc.addImage(input.faceImageDataUrl, "PNG", ix, y, imgW, imgH);
-    } catch {
-      /* ignore */
-    }
-    y += imgH + 9;
-  }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...P.body);
+    doc.text(lines, x, y);
+    y += lines.length * 4.3 + 3;
+  };
 
-  if (input.areas.length > 0) {
-    ensure(14);
-    sectionTitle("The zones we focused on", y);
-    y += 9;
-    for (const a of input.areas) {
-      const blurbLines = doc.splitTextToSize(a.blurb, CW - 30);
-      const hasBar = !a.covered && typeof a.enhancement === "number";
-      const rowH = Math.max(24, blurbLines.length * 4.6 + (hasBar ? 17 : 9));
-      ensure(rowH + 3);
-      doc.setDrawColor(...P.line);
-      doc.setLineWidth(0.3);
-      if (a.cropDataUrl) {
-        try {
-          doc.addImage(a.cropDataUrl, "JPEG", M, y, 21, 21);
-        } catch {
+  const drawRecommendation = (r: ReportRecommendation) => {
+    ensure(60);
+    sectionTitle("Your recommended treatment", y);
+    y += 10;
+    doc.setFont("times", "normal");
+    doc.setFontSize(17);
+    doc.setTextColor(...P.heading);
+    const t = doc.splitTextToSize(r.title, CW) as string[];
+    doc.text(t, M, y);
+    y += t.length * 6.8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...P.gold);
+    doc.text(r.subtitle, M, y);
+    y += 6.5;
+    paragraph(null, r.lead, M, CW);
+    paragraph("Why it goes further than a single treatment", "", M, CW);
+    y -= 6;
+    for (const c of r.comparisons) {
+      paragraph(null, `${c.alternative} ${c.limitation}`, M + 4, CW - 4);
+      y -= 1.5;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...P.goldLt);
+      const ours = doc.splitTextToSize(`Our programme: ${c.ours}`, CW - 4) as string[];
+      ensure(ours.length * 4.3 + 4);
+      doc.text(ours, M + 4, y);
+      y += ours.length * 4.3 + 3.5;
+    }
+    paragraph("Why Harley Street Aesthetics", r.whyClinic.map((w) => `- ${w}`).join("\n"), M, CW);
+    paragraph(null, r.priceLine, M, CW);
+    doc.setFontSize(7.5);
+    doc.setTextColor(...P.faint);
+    const sp = doc.splitTextToSize(r.smallPrint, CW) as string[];
+    ensure(sp.length * 3.6 + 4);
+    doc.text(sp, M, y);
+    y += sp.length * 3.6 + 6;
+  };
+
+  // Their face, their areas — drawn straight after "Your pigmentation type".
+  const drawMapAndAreas = () => {
+    if (input.usedPhoto && input.faceImageDataUrl) {
+      // Fit the photo into a max box preserving its true aspect ratio — never
+      // stretch it (a tall phone screenshot must stay tall, not squashed).
+      const aspect =
+        input.faceImageAspect && input.faceImageAspect > 0
+          ? input.faceImageAspect
+          : 0.8;
+      const maxH = 96;
+      const maxW = Math.min(CW, 118);
+      let imgW = maxH * aspect;
+      let imgH = maxH;
+      if (imgW > maxW) {
+        imgW = maxW;
+        imgH = maxW / aspect;
+      }
+      ensure(imgH + 18);
+      sectionTitle("Your pigmentation map", y);
+      y += 9;
+      const ix = (PW - imgW) / 2;
+      doc.setDrawColor(...P.gold);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(ix - 1.5, y - 1.5, imgW + 3, imgH + 3, 2, 2, "S");
+      try {
+        doc.addImage(input.faceImageDataUrl, "PNG", ix, y, imgW, imgH);
+      } catch {
+        /* ignore */
+      }
+      y += imgH + 9;
+    }
+
+    if (input.areas.length > 0) {
+      // Room for the heading AND its first row, so the heading is never orphaned.
+      ensure(50);
+      sectionTitle("Where your pigmentation shows", y);
+      y += 9;
+      for (const a of input.areas) {
+        // Measure using the same font that renders the description. Previous
+        // rows leave a smaller bold font active, which otherwise under-wraps.
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const blurbLines = doc.splitTextToSize(a.blurb, CW - 30);
+        const hasBar = !a.covered && typeof a.enhancement === "number";
+        const rowH = Math.max(24, blurbLines.length * 4.6 + (hasBar ? 17 : 9));
+        ensure(rowH + 3);
+        doc.setDrawColor(...P.line);
+        doc.setLineWidth(0.3);
+        if (a.cropDataUrl) {
+          try {
+            doc.addImage(a.cropDataUrl, "JPEG", M, y, 21, 21);
+          } catch {
+            doc.setFillColor(...P.panel);
+            doc.rect(M, y, 21, 21, "F");
+          }
+        } else {
           doc.setFillColor(...P.panel);
           doc.rect(M, y, 21, 21, "F");
         }
-      } else {
-        doc.setFillColor(...P.panel);
-        doc.rect(M, y, 21, 21, "F");
-      }
-      doc.rect(M, y, 21, 21, "S");
-      doc.setFillColor(...P.gold);
-      doc.circle(M + 2.6, y + 2.6, 2.6, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(...P.badgeText);
-      doc.text(String(a.num), M + 2.6, y + 3.6, { align: "center" });
-
-      const tx = M + 27;
-      doc.setFont("times", "normal");
-      doc.setFontSize(12);
-      doc.setTextColor(...P.heading);
-      doc.text(a.title, tx, y + 4);
-      const tagX = tx + doc.getTextWidth(a.title) + 3;
-      if (a.covered) tagPill("COVERED IN PHOTO", tagX, y + 0.8, P.faint);
-      else if (a.flagged) tagPill("FOCUS", tagX, y + 0.8, P.gold);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...P.body);
-      doc.text(blurbLines, tx, y + 9.5);
-      let by = y + 9.5 + blurbLines.length * 4.6 + 1;
-
-      if (hasBar) {
-        const pct = Math.max(0, Math.min(100, a.enhancement as number));
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7);
-        doc.setTextColor(...P.faint);
-        doc.text("IMPROVEMENT POTENTIAL", tx, by, { charSpace: 0.5 });
-        doc.setTextColor(...P.goldLt);
-        const sev =
-          typeof a.severity === "number"
-            ? Math.max(0, Math.min(100, a.severity))
-            : null;
-        doc.text(
-          sev !== null ? `visibility ${sev}%   ·   +${pct}%` : `+${pct}%`,
-          PW - M,
-          by,
-          { align: "right" },
-        );
-        by += 1.6;
-        const barW = CW - 27;
-        doc.setFillColor(...P.panel);
-        doc.roundedRect(tx, by, barW, 1.8, 0.9, 0.9, "F");
+        doc.rect(M, y, 21, 21, "S");
         doc.setFillColor(...P.gold);
-        doc.roundedRect(tx, by, (barW * pct) / 100, 1.8, 0.9, 0.9, "F");
+        doc.circle(M + 2.6, y + 2.6, 2.6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(...P.badgeText);
+        doc.text(String(a.num), M + 2.6, y + 3.6, { align: "center" });
+
+        const tx = M + 27;
+        doc.setFont("times", "normal");
+        doc.setFontSize(12);
+        doc.setTextColor(...P.heading);
+        doc.text(a.title, tx, y + 4);
+        const tagX = tx + doc.getTextWidth(a.title) + 3;
+        if (a.covered) tagPill("COVERED IN PHOTO", tagX, y + 0.8, P.faint);
+        else if (a.flagged) tagPill("FOCUS", tagX, y + 0.8, P.gold);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(...P.body);
+        doc.text(blurbLines, tx, y + 9.5);
+        let by = y + 9.5 + blurbLines.length * 4.6 + 1;
+
+        if (hasBar) {
+          const pct = Math.max(0, Math.min(100, a.enhancement as number));
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7);
+          doc.setTextColor(...P.faint);
+          doc.text("IMPROVEMENT POTENTIAL", tx, by, { charSpace: 0.5 });
+          doc.setTextColor(...P.goldLt);
+          const sev =
+            typeof a.severity === "number"
+              ? Math.max(0, Math.min(100, a.severity))
+              : null;
+          doc.text(
+            sev !== null ? `visibility ${sev}%   ·   +${pct}%` : `+${pct}%`,
+            PW - M,
+            by,
+            { align: "right" },
+          );
+          by += 1.6;
+          const barW = CW - 27;
+          doc.setFillColor(...P.panel);
+          doc.roundedRect(tx, by, barW, 1.8, 0.9, 0.9, "F");
+          doc.setFillColor(...P.gold);
+          doc.roundedRect(tx, by, (barW * pct) / 100, 1.8, 0.9, 0.9, "F");
+        }
+        y += rowH;
       }
-      y += rowH;
     }
+  };
+
+  if (!input.spotType) {
+    drawMapAndAreas();
+    if (input.recommendation) drawRecommendation(input.recommendation);
+  }
+
+  if (input.spotType) {
+    const st = input.spotType;
+    ensure(40);
+    sectionTitle("Your pigmentation type", y);
+    y += 10;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...P.faint);
+    doc.text("Your photo appears most consistent with", M, y);
+    y += 7;
+    doc.setFont("times", "normal");
+    doc.setFontSize(18);
+    doc.setTextColor(...P.heading);
+    const nameLines = doc.splitTextToSize(st.name, CW) as string[];
+    doc.text(nameLines, M, y);
+    y += nameLines.length * 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...P.gold);
+    doc.text(`Often called ${st.commonName}`, M, y);
+    y += 7;
+    paragraph("What it is", st.what, M, CW);
+    paragraph("What causes it", st.cause, M, CW);
+    if (st.secondaryNote) paragraph("Also noted", st.secondaryNote, M, CW);
+    y += 3;
+
+    drawMapAndAreas();
+    if (input.recommendation) drawRecommendation(input.recommendation);
+
+    ensure(30);
+    sectionTitle(`Your treatment plan for ${st.name.toLowerCase()}`.slice(0, 70), y);
+    y += 9;
+    paragraph(
+      null,
+      "How each step of our 3R Programme (Reduce, Regulate, Reverse) addresses your type of pigmentation, and why it helps. Pigment cells sit at the junction between the two top layers of your skin. When that junction is weak, extra pigment leaks deeper, which is why it keeps coming back. We help regulate how pigment is made and strengthen that layer. Repair, don't damage.",
+      M,
+      CW,
+    );
+    for (const s of st.steps) {
+      ensure(30);
+      doc.setFont("times", "normal");
+      doc.setFontSize(13);
+      doc.setTextColor(...P.gold);
+      doc.text(s.step, M, y);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(...P.heading);
+      doc.text(s.title, M + 10, y);
+      y += 5.5;
+      paragraph("How we address it", s.how, M + 10, CW - 10);
+      paragraph("Why it works", s.why, M + 10, CW - 10);
+      y += 1.5;
+    }
+    paragraph("What to expect", st.outlook, M, CW);
+    y += 4;
   }
 
   ensure(16);
@@ -417,10 +538,10 @@ export function buildReportPdf(input: ReportInput): Blob {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...P.body);
-  doc.text(`${T} from `, M, y);
+  doc.text(`${T}: `, M, y);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...P.heading);
-  doc.text(input.priceFrom, M + doc.getTextWidth(`${T} from `), y);
+  doc.text(input.priceFrom, M + doc.getTextWidth(`${T}: `), y);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...P.faint);
@@ -476,6 +597,18 @@ export function buildReportPdf(input: ReportInput): Blob {
   doc.text(`${input.bookingUrl}   ·   ${input.phone}`, M + 7, y + 12.5);
   // The whole panel is tappable — a printed URL nobody retypes books nobody.
   doc.link(M, y, CW, 17, { url: `https://${input.bookingUrl}` });
+  y += 17;
+
+  if (input.endDisclaimer) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    const lines = doc.splitTextToSize(input.endDisclaimer, CW - 10) as string[];
+    ensure(lines.length * 4.2 + 8);
+    y += 7;
+    doc.setTextColor(...P.heading);
+    doc.text(lines, PW / 2, y, { align: "center" });
+    y += lines.length * 4.2;
+  }
 
   footer();
   return doc.output("blob");

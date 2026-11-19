@@ -8,10 +8,18 @@ import { z } from "zod";
 
 const serverSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
-  ANTHROPIC_MODEL: z.string().min(1).default("claude-sonnet-4-6"),
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
   GHL_WEBHOOK_URL: z
     .string()
     .url("GHL_WEBHOOK_URL must be a valid URL")
+    .optional(),
+  // The Strategy Guys CRM workflow's inbound webhook. It gets the same payload
+  // as GoHighLevel and sends the Meta Lead itself (with the page URL, which
+  // Meta needs for this health-category business).
+  CRM_LEAD_WEBHOOK_URL: z
+    .string()
+    .url("CRM_LEAD_WEBHOOK_URL must be a valid URL")
+    .refine((v) => v.startsWith("https://"), "CRM_LEAD_WEBHOOK_URL must use https")
     .optional(),
 });
 

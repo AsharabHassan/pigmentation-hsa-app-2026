@@ -1,0 +1,28 @@
+# Only application source and public assets belong in a Vercel upload.
+.git
+.next
+.vercel
+node_modules
+.tmp
+out
+output
+coverage
+docker
+certificates
+.claude
+.agents
+**/.env*
+**/*.pem
+**/*.key
+**/*.log
+**/*.tsbuildinfo
+# Remotion video renders — not used by the web app
+public/assets/hsa-doctor60-*
+public/assets/hsa-chair10-*
+public/assets/hsa-conversation10-*
+public/assets/hsa-reels-*
+remotion
+scripts
+
+# Offline campaign artwork and film renders are not application source
+campaign

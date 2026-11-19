@@ -18,8 +18,8 @@ const secondary =
  * (utm_*, gclid, fbclid…) travel with the visitor, plus ?lp= so the insights
  * database credits this landing page. A plain href keeps it crawlable.
  */
-function analysisHref(analysisPath: string, landingId: string): string {
-  const params = new URLSearchParams(window.location.search);
+export function analysisHref(analysisPath: string, landingId: string, search = ""): string {
+  const params = new URLSearchParams(search);
   params.set("lp", landingId);
   return `${analysisPath}?${params.toString()}`;
 }
@@ -37,16 +37,16 @@ export function StartAnalysisLink({
 }) {
   return (
     <a
-      href={analysisPath}
+      href={analysisHref(analysisPath, landingId)}
       onClick={(event) => {
         event.preventDefault();
-        window.location.assign(analysisHref(analysisPath, landingId));
+        window.location.assign(analysisHref(analysisPath, landingId, window.location.search));
       }}
       className={cn(primary, className)}
     >
       {children ?? (
         <>
-          <ScanFace size={19} /> Start my free skin analysis
+          <ScanFace size={19} /> Try my free skin analysis
         </>
       )}
     </a>
@@ -104,7 +104,7 @@ export function LandingStickyBar({
         landingId={landingId}
         className="h-12 flex-1 px-4 text-sm"
       >
-        <ScanFace size={17} /> Free skin analysis
+        <ScanFace size={17} /> Try my free skin analysis
       </StartAnalysisLink>
       <button
         type="button"

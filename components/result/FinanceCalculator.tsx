@@ -9,10 +9,12 @@ import {
   FINANCE_DISCLAIMER,
   FINANCE_PROVIDERS,
   LOAN_TERMS,
+  COURSE_PRICE,
+  COURSE_SESSIONS,
   MAX_SESSIONS,
   MIN_SESSIONS,
   PRICE_PER_SESSION,
-  courseTotal,
+  courseBreakdown,
   financePlan,
   formatPounds,
   type FinanceProviderKey,
@@ -22,17 +24,18 @@ import { scrollToBooking } from "./BookingCalendar";
 
 /**
  * "Spread the cost" calculator. Same providers, caps and maths as the clinic's
- * own finance page, driven by sessions rather than a bare £ slider because the
- * visitor has just been told a course is at least two.
+ * own finance page, driven by sessions rather than a bare £ slider. It opens on
+ * the usual course of 4 (one course price); extra sessions are per-session.
  */
 export function FinanceCalculator() {
   const analysisId = useWizard((s) => s.result?.analysisId);
-  const [sessions, setSessions] = useState(MIN_SESSIONS);
+  const [sessions, setSessions] = useState(COURSE_SESSIONS);
   const [providerKey, setProviderKey] = useState<FinanceProviderKey>("klarna");
   const [term, setTerm] = useState<LoanTerm>(12);
   const [touched, setTouched] = useState(false);
 
-  const total = courseTotal(sessions);
+  const breakdown = courseBreakdown(sessions);
+  const total = breakdown.total;
   // A plan the new total no longer fits falls back to the one with no cap.
   const selectedKey = financePlan(providerKey, total).available
     ? providerKey
@@ -68,8 +71,8 @@ export function FinanceCalculator() {
         <div>
           <p className="text-xs text-body/70">Sessions</p>
           <p className="text-sm text-body">
-            <span className="font-semibold text-heading">{sessions}</span> × from{" "}
-            {formatPounds(PRICE_PER_SESSION)} ={" "}
+            <span className="font-semibold text-heading">{sessions}</span>{" "}
+            {sessions === 1 ? "session" : "sessions"} · {priceWorking(breakdown)} ={" "}
             <span className="font-semibold text-heading">
               {formatPounds(total)}
             </span>
@@ -210,6 +213,15 @@ export function FinanceCalculator() {
       </p>
     </div>
   );
+}
+
+/** "course of 4 at £999 + 2 × £299": how the total is made up. */
+function priceWorking({ courses, singles }: { courses: number; singles: number }): string {
+  const parts: string[] = [];
+  if (courses === 1) parts.push(`course of ${COURSE_SESSIONS} at ${formatPounds(COURSE_PRICE)}`);
+  if (courses > 1) parts.push(`${courses} courses of ${COURSE_SESSIONS} at ${formatPounds(COURSE_PRICE)}`);
+  if (singles > 0) parts.push(`${singles} × ${formatPounds(PRICE_PER_SESSION)}`);
+  return parts.join(" + ");
 }
 
 function StepButton({

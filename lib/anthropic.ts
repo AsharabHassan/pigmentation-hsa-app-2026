@@ -1,9 +1,12 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Bucket, PhotoAssessment, ZoneKey } from "./types";
+import { isSpotTypeKey } from "./spot-types";
 import { serverEnv } from "./env";
 import { SYSTEM_PIGMENTATION } from "./prompts/system-pigmentation";
 import { RESULT_SCHEMA } from "./prompts/result-schema";
+import { skinScan, skinScanNote } from "./skinscan";
+import { reportAgreement } from "./skinscan-agreement";
 import type { MediaType } from "@/store/wizard-store";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,11 +46,14 @@ export async function assessPhoto(params: {
   imageMediaType: MediaType;
 }): Promise<PhotoAssessment> {
   const env = serverEnv();
+  const scan = await skinScan(params.imageBase64);
 
   const message = await getClient().messages.create({
     model: env.ANTHROPIC_MODEL,
-    max_tokens: 700,
-    thinking: { type: "disabled" },
+    // Thinking counts toward max_tokens, so leave room beyond the ~500-token JSON.
+    // Claude Sonnet 5.5 rejects thinking {type:"disabled"}; it runs adaptive
+    // thinking by default and effort controls how much.
+    max_tokens: 8000,
     system: [
       {
         type: "text",
@@ -75,11 +81,15 @@ export async function assessPhoto(params: {
             type: "text",
             text: "Assess this selfie for facial pigmentation and produce the personalised result as the structured fields.",
           },
+          ...(scan ? [{ type: "text" as const, text: skinScanNote(scan) }] : []),
         ],
       },
     ],
   });
 
+  if (message.stop_reason === "refusal") {
+    throw new Error(`refusal: ${message.stop_details?.category ?? "unspecified"}`);
+  }
   const block = message.content.find((b) => b.type === "text");
   if (!block || block.type !== "text") throw new Error("no text block");
   const raw = JSON.parse(block.text) as {
@@ -94,12 +104,23 @@ export async function assessPhoto(params: {
       severityPercent: number;
       improvementPercent: number;
     }[];
+    primarySpotType: string;
+    secondarySpotType: string;
     framingAdequate: boolean;
+    decisionReason?: string;
     headline: string;
     narrative: string;
     observedAreas: string[];
     encouragement: string;
   };
+  // Decision trail for the server log only — scores and reasons, never the image.
+  console.info("[analyze] decision", {
+    suitability: raw.suitability,
+    primary: raw.primarySpotType,
+    framingAdequate: raw.framingAdequate,
+    skinScan: scan?.top ?? null,
+    reason: raw.decisionReason,
+  });
   const bucket = MAP[raw.suitability];
   if (
     !bucket ||
@@ -152,9 +173,30 @@ export async function assessPhoto(params: {
         .filter((z): z is ZoneKey => Boolean(z))
     : [];
 
+  // Anything outside the fixed list ("none", or an unexpected value) is unclassified.
+  const spotType = isSpotTypeKey(raw.primarySpotType) ? raw.primarySpotType : null;
+  const secondarySpotType =
+    spotType && isSpotTypeKey(raw.secondarySpotType) && raw.secondarySpotType !== spotType
+      ? raw.secondarySpotType
+      : null;
+
+  // SkinScan agreement log (no effect on the result): only for readable photos.
+  if (scan && raw.framingAdequate !== false) {
+    const primary = spotType ?? "none";
+    const top2 = Object.keys(scan.pattern ?? {}).slice(0, 2);
+    reportAgreement(
+      "pigmentation",
+      { top: scan.top, top2, pattern: scan.pattern, version: scan.version },
+      { primary, secondary: secondarySpotType },
+      { agree_top: scan.top === primary, agree_claude_in_skinscan_top2: top2.includes(primary) },
+    );
+  }
+
   return {
     suitability: bucket,
     score,
+    spotType,
+    secondarySpotType,
     zonesObscured,
     makeupDetected: raw.makeupDetected === true,
     zoneSeverity,

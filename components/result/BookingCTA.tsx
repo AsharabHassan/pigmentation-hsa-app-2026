@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { CalendarHeart, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useClinicLocation } from "@/components/clinic/ClinicLocationContext";
 import { useWizard } from "@/store/wizard-store";
 import { trackInsight } from "@/lib/visit-context";
 import { BOOKING_ANCHOR_ID, scrollToBooking } from "./BookingCalendar";
+import experienceStyles from "@/components/wizard/AnalysisExperience.module.css";
+
+const subscribeToMount = () => () => {};
 
 type Placement = "top" | "bottom" | "sticky";
 
@@ -53,6 +57,7 @@ export function BookingCTA({
 export function StickyBookingBar({ label }: { label: string }) {
   const book = useBookingClick("sticky");
   const [calendarVisible, setCalendarVisible] = useState(false);
+  const mounted = useSyncExternalStore(subscribeToMount, () => true, () => false);
 
   useEffect(() => {
     const target = document.getElementById(BOOKING_ANCHOR_ID);
@@ -64,13 +69,26 @@ export function StickyBookingBar({ label }: { label: string }) {
     return () => observer.disconnect();
   }, []);
 
-  if (calendarVisible) return null;
+  // Flag the body while the bar shows, so fixed UI (the cookie pill) can sit above it.
+  const showing = mounted && !calendarVisible;
+  useEffect(() => {
+    if (!showing) return;
+    document.body.dataset.stickyBooking = "";
+    return () => {
+      delete document.body.dataset.stickyBooking;
+    };
+  }, [showing]);
 
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-peach/25 bg-[#090909]/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:hidden">
-      <Button size="lg" className="w-full" onClick={book}>
+  if (!showing) return null;
+
+  // The wizard's blur/transform animation creates a containing block for fixed
+  // children. A portal keeps this bar anchored to the viewport while scrolling.
+  return createPortal(
+    <div role="region" aria-label="Mobile consultation booking" className={`${experienceStyles.experience} fixed inset-x-0 bottom-0 z-40 border-t border-peach/25 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_#00000015] sm:hidden`}>
+      <Button size="lg" className="w-full px-4 text-sm" onClick={book}>
         <CalendarHeart size={18} /> {label}
       </Button>
-    </div>
+    </div>,
+    document.body,
   );
 }

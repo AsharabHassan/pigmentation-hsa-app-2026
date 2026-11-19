@@ -2,7 +2,7 @@
 
 A cinematic, standalone web-app lead magnet for **Harley Street Aesthetics** (London & Glasgow). A visitor takes a selfie, our AI maps the dark spots and uneven tone across their face, and they receive a personalised pigmentation analysis presenting the clinic's **Signature Pigmentation Removal Treatment** (VirtueRF Microneedling + Laser + Mesotherapy, minimum 2 sessions, from £399 per session) as the solution. Qualified leads flow into **GoHighLevel** for AI sales-agent follow-up. Primary CTA: **Book Your Free Online Consultation**.
 
-> The tool is a **cosmetic, informational pre-consultation guide — not a medical assessment or diagnosis.** It never names or diagnoses skin conditions; suitability is always confirmed by a practitioner.
+> The tool is an **informational pre-consultation guide — not a diagnosis.** It names the pigmentation type a photo *appears most consistent with* (melasma, solar lentigines, post-inflammatory hyperpigmentation, ephelides, photodamage) and explains how the treatment addresses it; the type and suitability are always confirmed by a practitioner, and the report closes by saying so.
 
 This app is a sibling of the HSA Endomax Lift analyzer, sharing the same dark-gold luxury identity (near-black + metallic gold `#D4AF37`, Playfair Display + Montserrat) and wizard architecture, re-pointed at facial pigmentation.
 
@@ -20,7 +20,7 @@ route controls the clinic wording, address, phone, consultation link, PDF/email
 details and the location fields/tags sent to GoHighLevel.
 
 ### The safety model
-- **Claude Vision** (`claude-sonnet-4-6`) chooses the cosmetic outcome and writes the narrative under a strict scope guard: observational cosmetic language only — it must never name medical conditions (no "melasma" etc.), never comment on moles or lesions, and routes anything medical-looking to a neutral "consultation" result.
+- **Claude Vision** (`claude-sonnet-4-6`) chooses the cosmetic outcome, writes the narrative, and **picks a pigmentation type from a fixed list** (or "none" when unclear). It never writes the medical copy: every word about a type — what it is, its cause, how each protocol step addresses it and why — is fixed, clinic-authored text in `lib/spot-types.ts`, reviewable in one place. Claude's own free text stays observational (no condition names). It must never classify or comment on a mole, raised spot or any single lesion — those route to a neutral "consultation" result with no type shown. No type is shown on a retake or an out-of-scope result.
 - Claude returns **zone-level severities only** — all face geometry/crops come from on-device MediaPipe landmarks. The model is never asked for pixel coordinates.
 - The photo is securely sent to the configured AI provider in a single `/api/analyze` request. This app does not persist the original photo to a database or file system and does not log it; the browser keeps it in memory while the visitor views their result. If Claude is unavailable, a deterministic on-brand fallback routes to a consultation, so a user always gets a result.
 - Report delivery is **automatic and unconditional** — there is no feature flag and no separate opt-in. Every completed analysis emails the patient their report and stores the PDF in GoHighLevel. It is driven entirely by `GHL_API_TOKEN` + `GHL_LOCATION_ID`; if those are unset, `/api/report` no-ops and only the lead webhook fires. The report contains the patient's photo, so treat GHL retention/deletion as a process you own — the app does not purge.
@@ -121,7 +121,7 @@ npm run build   # production build + type-check
 3. Point your subdomain (e.g. `pigmentation.harleystreetaesthetic.co.uk`) at the deployment.
 
 ## Before go-live (HSA-specific)
-- **Have a qualified practitioner sign off** the treatment copy (`lib/constants.ts` `PROTOCOL_STEPS`, `REGION_COPY` in `lib/face-regions.ts`) and the system prompt's scope guard (`lib/prompts/system-pigmentation.ts`) — pigmentation borders dermatology and the no-diagnosis language carries liability weight.
+- **Have a qualified practitioner sign off** the pigmentation-type and treatment-plan copy (`lib/spot-types.ts` — this names medical conditions to patients, so it carries the most liability weight), the treatment copy (`lib/constants.ts` `PROTOCOL_STEPS`, `REGION_COPY` in `lib/face-regions.ts`) and the system prompt's scope guard (`lib/prompts/system-pigmentation.ts`) — pigmentation borders dermatology and the no-diagnosis language carries liability weight.
 - Run several test photos and **audit the narratives** for medical condition names before launch.
 - Replace the **placeholder testimonials** in `components/result/Testimonials.tsx` with HSA's own verified reviews.
 - Add HSA's own **consented before/after pairs** to `/public/results` and populate `CASES` in `components/result/ResultsGallery.tsx` (it ships empty — do not reuse imagery from any other clinic).

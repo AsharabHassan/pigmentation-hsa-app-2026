@@ -28,9 +28,10 @@ const MAX_HEIGHT = 2_400;
 
 /** Smooth-scroll to the embedded calendar from any booking button. */
 export function scrollToBooking(): void {
-  document
-    .getElementById(BOOKING_ANCHOR_ID)
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const calendar = document.getElementById(BOOKING_ANCHOR_ID);
+  if (!calendar) return;
+  calendar.scrollIntoView({ behavior: "smooth", block: "start" });
+  calendar.focus({ preventScroll: true });
 }
 
 /**
@@ -39,9 +40,10 @@ export function scrollToBooking(): void {
  *
  * We speak the widget's postMessage protocol directly instead of loading GHL's
  * form_embed.js: that script hides the iframe until its own handshake completes
- * and, inside this app, never reveals it. Two messages matter:
+ * and can leave it hidden. Support both current and legacy widget messages:
  *   · "fetch-query-params"  → we answer with the visitor's details (prefill)
  *   · "highlevel.setHeight" → we size the frame so it never scrolls internally
+ *   · "[iFrameSizer]..." → the provider's bundled iframe-resizer protocol
  * Bookings reach the insights database through the GHL workflow webhook
  * (/api/booking), not through this component.
  */
@@ -53,12 +55,37 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(INITIAL_HEIGHT);
   const [loaded, setLoaded] = useState(false);
+  const [stalled, setStalled] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const analysisId = result?.analysisId;
 
   const src = useMemo(
     () => prefilledCalendarUrl(clinic.calendarUrl, lead),
     [clinic.calendarUrl, lead],
   );
+
+  // A frame load event also fires for blank/blocked documents. Only the
+  // provider's authenticated resize handshake proves the widget is running.
+  useEffect(() => {
+    if (loaded) return;
+    const timer = window.setTimeout(() => setStalled(true), 12_000);
+    return () => window.clearTimeout(timer);
+  }, [loaded, attempt, src]);
+
+  function retry() {
+    setLoaded(false);
+    setStalled(false);
+    setAttempt(value => value + 1);
+  }
+
+  function initializeFrame() {
+    // Match the provider's iframe-resizer handshake without its global script
+    // hiding or repositioning the frame. Send only to this calendar's origin.
+    frameRef.current?.contentWindow?.postMessage(
+      `[iFrameSizer]${FRAME_ID}:8:false:false:32:true:true:null:offset:null:null:0`,
+      new URL(clinic.calendarUrl).origin,
+    );
+  }
 
   useEffect(() => {
     let calendarOrigin: string;
@@ -74,6 +101,15 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
         return;
       }
       const data: unknown = event.data;
+      if (typeof data === "string" && data.startsWith(`[iFrameSizer]${FRAME_ID}:`)) {
+        const parts = data.slice(`[iFrameSizer]${FRAME_ID}:`.length).split(":");
+        const next = Number(parts[0]);
+        if (Number.isFinite(next) && next > 0 && parts.length >= 3) {
+          setHeight(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.ceil(next) + 5)));
+          setLoaded(true);
+        }
+        return;
+      }
       if (!Array.isArray(data)) return;
 
       if (data[0] === "fetch-query-params") {
@@ -92,7 +128,7 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
         );
       } else if (data[0] === "highlevel.setHeight") {
         const next = Number((data[1] as { height?: unknown } | null)?.height);
-        if (Number.isFinite(next)) {
+        if (Number.isFinite(next) && next > 0) {
           setHeight(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.ceil(next))));
           setLoaded(true);
         }
@@ -138,7 +174,9 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
     <section
       ref={sectionRef}
       id={BOOKING_ANCHOR_ID}
-      className="scroll-mt-6 overflow-hidden rounded-[2rem] border border-peach/35 bg-gradient-to-b from-peach/[0.09] via-white/[0.03] to-white/[0.02] shadow-[0_30px_80px_-40px_rgba(212,175,55,0.55)]"
+      tabIndex={-1}
+      aria-label="Book your free consultation"
+      className="scroll-mt-24 overflow-hidden rounded-[2rem] border border-peach/35 bg-gradient-to-b from-peach/[0.09] via-white/[0.03] to-white/[0.02] shadow-[0_30px_80px_-40px_rgba(212,175,55,0.55)]"
     >
       <div className="px-5 pt-7 text-center sm:px-8 sm:pt-9">
         <span className="inline-flex items-center gap-2 rounded-full border border-peach/30 bg-peach/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-peach">
@@ -179,6 +217,7 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
             </li>
           ))}
         </ul>
+
       </div>
 
       <div className="mt-7 px-2 pb-2 sm:px-3 sm:pb-3">
@@ -186,10 +225,9 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
           <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] bg-[#faf7ef] px-4 py-2.5">
             <span className="flex items-center gap-2 text-xs font-semibold text-[#1c1a16]">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#b8902a]" />
               </span>
-              Live availability
+              {loaded ? "Live availability" : "Consultation calendar"}
             </span>
             {lead && (
               <span className="truncate text-[11px] text-[#5c5852]">
@@ -200,28 +238,33 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
 
           {!loaded && (
             <div
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 top-[41px] z-10 flex flex-col items-center justify-center gap-3 bg-white"
+              role="status"
+              className="absolute inset-x-0 bottom-0 top-[41px] z-10 flex flex-col items-center justify-center gap-3 bg-white px-6 text-center"
             >
-              <Loader2 size={22} className="animate-spin text-[#b8902a]" />
+              {!stalled && <Loader2 size={22} className="animate-spin text-[#b8902a]" />}
               <span className="text-xs font-medium text-[#5c5852]">
-                Loading available times…
+                {stalled ? "The embedded calendar hasn’t connected. Try loading it again." : "Loading available times…"}
               </span>
+              {stalled && <button type="button" onClick={retry} className="min-h-11 rounded-full border border-[#b8902a] px-5 text-sm font-semibold text-[#715320]">Retry calendar</button>}
             </div>
           )}
 
           <iframe
+            key={`${src}-${attempt}`}
             ref={frameRef}
             src={src}
             id={FRAME_ID}
             title="Choose your free online consultation time"
             scrolling="no"
-            onLoad={() => window.setTimeout(() => setLoaded(true), 2_500)}
-            style={{ height }}
+            onLoad={initializeFrame}
+            onError={() => setStalled(true)}
+            style={{ height: stalled && !loaded ? 240 : height }}
             className="block w-full border-0 transition-[height] duration-300"
           />
         </div>
       </div>
+
+      {stalled && !loaded && <p className="px-6 pb-3 text-center text-xs text-body">Still having trouble? <a href={src} target="_blank" rel="noopener noreferrer" onClick={() => trackInsight(analysisId, "cta_click", "calendar-direct")} className="font-semibold text-peach underline">Open available times in a new tab</a>.</p>}
 
       <p className="px-6 pb-6 pt-3 text-center text-xs leading-relaxed text-body/65">
         Confirmation arrives by email and text. Need to change it later? Call{" "}

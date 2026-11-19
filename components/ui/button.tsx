@@ -24,8 +24,8 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  md: "h-11 px-6 text-sm",
-  lg: "h-14 px-9 text-base",
+  md: "h-11 min-h-11 px-6 text-sm",
+  lg: "h-14 min-h-14 px-9 text-base",
 };
 
 export interface ButtonProps extends HTMLMotionProps<"button"> {

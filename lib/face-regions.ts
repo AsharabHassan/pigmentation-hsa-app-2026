@@ -342,31 +342,31 @@ export const REGION_COPY: Record<RegionKey, { title: string; blurb: string }> = 
   forehead: {
     title: "Your forehead",
     blurb:
-      "VirtueRF's pulsed energy helps break down sun-related spots and darker patches across the forehead, while targeted laser work helps clear what remains for a brighter, more even canvas.",
+      "The Reduce step lifts sun-related spots and darker patches across the forehead. The Regulate step works on how that pigment is made, for a clearer, more even canvas.",
   },
   undereye: {
     title: "Your under-eye area",
     blurb:
-      "Gentle tone-evening for the delicate skin beneath the eyes — mesotherapy's vitamin and antioxidant blend helps brighten shadowy, uneven tone for a more rested look.",
+      "Gentle, repair-first care for the delicate skin beneath the eyes. The programme works on shadowy, uneven tone for a more rested look.",
   },
   nose: {
     title: "Your nose",
     blurb:
-      "The bridge and sides of the nose catch the sun first. The protocol targets these small, stubborn spots so the centre of your face reads clear and even.",
+      "The bridge and sides of the nose catch the sun first. The programme targets these small, stubborn spots so the centre of your face reads clear and even.",
   },
   cheeks: {
     title: "Your cheeks",
     blurb:
-      "The cheeks are where uneven patches show most. VirtueRF microneedling and laser work on the excess pigment while mesotherapy brightens, softening patchiness into a smoother, more uniform tone.",
+      "The cheeks are where uneven patches show most. Reduce lifts the excess pigment while healing ingredients calm and repair. Regulate works on the cells that make it, for a smoother, more even tone.",
   },
   upperlip: {
     title: "Your upper lip",
     blurb:
-      "The band above the lip is a classic site of stubborn pigmentation. The protocol's combination approach gently fades this shadowing for a fresher, brighter look.",
+      "The band above the lip is a classic site of stubborn pigmentation. The 3R Programme gently fades this shadowing for a fresher, more even look.",
   },
   jawline: {
     title: "Your jawline",
     blurb:
-      "Marks left behind by blemishes often settle along the jaw. The protocol helps fade these lingering spots as the skin renews.",
+      "Marks left behind by blemishes often settle along the jaw. The programme helps fade these lingering spots as the skin repairs.",
   },
 };

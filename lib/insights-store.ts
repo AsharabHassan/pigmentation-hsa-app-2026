@@ -23,10 +23,11 @@ export function recordAnalysis(record: AnalysisRecord): Promise<unknown> {
          makeup_detected, framing_adequate, zones_obscured, zone_severity,
          zone_improvement, top_zone, top_severity, headline, narrative,
          utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-         from_meta_ad, landing_path, referrer_host, device, from_google_ad
+         from_meta_ad, landing_path, referrer_host, device, from_google_ad,
+         spot_type, secondary_spot_type
        ) VALUES (
          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-         $20,$21,$22,$23,$24,$25
+         $20,$21,$22,$23,$24,$25,$26,$27
        ) ON CONFLICT (id) DO NOTHING`,
       [
         record.id,
@@ -54,6 +55,8 @@ export function recordAnalysis(record: AnalysisRecord): Promise<unknown> {
         context.referrerHost ?? null,
         record.device,
         context.fromGoogleAd,
+        result.spotType ?? null,
+        result.secondarySpotType ?? null,
       ],
     ),
   );

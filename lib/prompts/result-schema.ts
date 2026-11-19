@@ -11,6 +11,16 @@ const ZONE_ENUM = [
   "jawline",
 ] as const;
 
+const SPOT_TYPE_ENUM = [
+  "melasma",
+  "solar_lentigines",
+  "pih",
+  "ephelides",
+  "photodamage",
+  "periorbital",
+  "none",
+] as const;
+
 export const RESULT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -29,7 +39,7 @@ export const RESULT_SCHEMA = {
     skinQuality: {
       type: "number",
       description:
-        "0–30. Apparent skin health and readiness for a radiofrequency and injectable-based protocol (calm, intact skin scores higher; visibly active breakout or irritation lowers it). Judge only from this photo, with fine gradations.",
+        "0–30. Apparent skin health and readiness for a repair-led pigmentation programme (calm, intact skin scores higher; visibly active breakout or irritation lowers it). Judge only from this photo, with fine gradations.",
     },
     toneUniformity: {
       type: "number",
@@ -62,10 +72,27 @@ export const RESULT_SCHEMA = {
         required: ["zone", "severityPercent", "improvementPercent"],
       },
     },
+    primarySpotType: {
+      type: "string",
+      enum: SPOT_TYPE_ENUM,
+      description:
+        "The ONE kind of facial pigmentation the visible PATTERN is most consistent with. 'melasma' = soft-edged, roughly symmetrical brown/grey-brown patches (cheeks, forehead, nose bridge, upper lip); 'solar_lentigines' = flat, clearly defined brown spots on sun-exposed areas; 'pih' = flat darker marks sitting where blemishes or irritation have healed; 'ephelides' = small light-brown freckles scattered over nose and cheeks; 'photodamage' = diffuse mottled unevenness without distinct spots; 'periorbital' = brown/grey-brown under-eye darkness (dark circles) when that is the most noticeable pigmentation. Use 'none' when the pattern is unclear, the photo cannot be read, makeup hides it, no pigmentation is visible, or the concern is out of scope. NEVER use this field to classify a mole, a raised spot, or any single isolated lesion — that is always 'none'.",
+    },
+    secondarySpotType: {
+      type: "string",
+      enum: SPOT_TYPE_ENUM,
+      description:
+        "A second kind of pigmentation, ONLY when the photo clearly shows a genuine mix (e.g. melasma patches plus separate sun spots). Must differ from primarySpotType. Use 'none' in every other case — most faces are 'none' here.",
+    },
     framingAdequate: {
       type: "boolean",
       description:
-        "True only if the WHOLE face — forehead to jaw, both cheeks — is clearly visible, in focus, and evenly lit well enough to judge skin tone. False if part of the face is cut off, the head is at too steep an angle, the face is too small/far, the photo is too dark or blurry, strong side-lighting throws hard shadows across the face, an obvious colour filter is applied, or it's a screenshot rather than a clean front-facing selfie. Lighting matters: uneven light mimics uneven pigment. When false the person should retake their photo.",
+        "True when the skin can genuinely be read — ordinary daylight, sunlight or window light from one side, mild shadows and normal phone sharpness are all fine (judge tone from the well-lit parts). False ONLY if most of the face is cut off or turned well away, the face is far too small, the photo is very dark or clearly out of focus, heavy shadow hides most of the face, an obvious colour/beauty filter is applied, or it's a screenshot rather than a selfie. When false the person is asked to retake, so don't reject usable photos.",
+    },
+    decisionReason: {
+      type: "string",
+      description:
+        "Internal only (never shown to the person): one short sentence on why you chose this suitability and type — e.g. which zones drove it, or exactly why the photo needed a consultation.",
     },
     headline: {
       type: "string",
@@ -96,7 +123,10 @@ export const RESULT_SCHEMA = {
     "zonesObscured",
     "makeupDetected",
     "zoneFindings",
+    "primarySpotType",
+    "secondarySpotType",
     "framingAdequate",
+    "decisionReason",
     "headline",
     "narrative",
     "observedAreas",

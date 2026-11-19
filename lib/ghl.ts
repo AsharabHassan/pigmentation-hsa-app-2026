@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import { BUCKET_META, getClinicLocation } from "./constants";
 import { ANALYSIS_PRIVACY_NOTICE_VERSION } from "./privacy";
+import { SPOT_TYPES } from "./spot-types";
 
 export const META_DATASET_ID = "1849043682301992" as const;
 export const META_EVENT_NAME = "Lead" as const;
@@ -33,11 +34,20 @@ export interface GhlPayload {
   usedPhoto: boolean;
   narrativeSource: string;
   headline: string;
+  /** Medical name of the pigmentation type the photo appeared consistent with; "" when unclear. */
+  pigmentationType: string;
+  secondaryPigmentationType: string;
   imageProcessingConsent: boolean;
   imageProcessingConsentAt?: string;
   imageProcessingConsentRecordedAt?: string;
   privacyNoticeVersion: string;
   metaTrackingConsent: boolean;
+  /** The client asked us to call/text/WhatsApp them about their consultation. */
+  consultationContactConsent: boolean;
+  consultationContactConsentAt?: string;
+  consultationContactStatement?: string;
+  consultationContactConsentVersion?: string;
+  preferredCallTime?: string;
   submittedAt?: string;
   // Flat, allow-listed fields for the conditional GHL -> Meta CAPI action.
   metaDatasetId?: string;
@@ -66,6 +76,8 @@ export interface BuildGhlPayloadOptions {
   privacyNoticeVersion?: string;
   metaTrackingConsent: boolean;
   meta?: ServerMetaConversion;
+  consultationContact?: { at: string; statement: string; version: string };
+  preferredCallTime?: string;
 }
 
 /** Force an untrusted browser URL onto the production origin and drop query/hash. */
@@ -181,9 +193,14 @@ export function buildGhlPayload(
       "hsa-source-pigmentation-app",
       `hsa-clinic-${clinic.key}`,
       `pigmentation-${result.bucket}`,
+      ...(result.spotType
+        ? [`hsa-spot-${result.spotType.replace(/_/g, "-")}`]
+        : []),
       options.metaTrackingConsent
         ? "hsa-meta-consent-accepted"
         : "hsa-meta-consent-declined",
+      ...(options.consultationContact ? ["hsa-consultation-call-requested"] : []),
+      ...(options.preferredCallTime ? [`hsa-call-${options.preferredCallTime}`] : []),
     ],
     clinicLocation: clinic.key,
     clinicLocationLabel: clinic.city,
@@ -196,6 +213,10 @@ export function buildGhlPayload(
     usedPhoto: result.usedPhoto,
     narrativeSource: result.narrativeSource,
     headline: result.narrative.headline,
+    pigmentationType: result.spotType ? SPOT_TYPES[result.spotType].name : "",
+    secondaryPigmentationType: result.secondarySpotType
+      ? SPOT_TYPES[result.secondarySpotType].name
+      : "",
     imageProcessingConsent: options.imageProcessingConsent,
     imageProcessingConsentAt: options.imageProcessingConsent
       ? (options.imageProcessingConsentAt ?? options.submittedAt)
@@ -206,6 +227,11 @@ export function buildGhlPayload(
     privacyNoticeVersion:
       options.privacyNoticeVersion ?? ANALYSIS_PRIVACY_NOTICE_VERSION,
     metaTrackingConsent: options.metaTrackingConsent,
+    consultationContactConsent: Boolean(options.consultationContact),
+    consultationContactConsentAt: options.consultationContact?.at,
+    consultationContactStatement: options.consultationContact?.statement,
+    consultationContactConsentVersion: options.consultationContact?.version,
+    preferredCallTime: options.preferredCallTime,
     submittedAt: options.submittedAt,
     ...metaFields,
   };

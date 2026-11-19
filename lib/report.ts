@@ -2,7 +2,7 @@
 
 import {
   FINANCE_DISCLAIMER,
-  MIN_SESSIONS,
+  COURSE_SESSIONS,
   courseTotal,
   financePlan,
   formatPounds,
@@ -25,10 +25,19 @@ import {
   CLINIC,
   getClinicLocation,
   PRICE_GUIDE,
+  RESULTS_VARY,
   SESSIONS_GUIDE,
   DISCLAIMER,
+  PROTOCOL_STEPS,
 } from "./constants";
-import { buildReportPdf, type ReportArea } from "./report-pdf";
+import {
+  buildReportPdf,
+  type ReportArea,
+  type ReportRecommendation,
+  type ReportSpotType,
+} from "./report-pdf";
+import { TREATMENT_NAME, WHY_HSA, pitchFor, shouldRecommend } from "./protocol-pitch";
+import { REPORT_DISCLAIMER, SPOT_TYPES } from "./spot-types";
 
 // Mirrors the on-screen FaceConcernMap so the PDF matches what the client saw.
 const CORE: RegionKey[] = ["forehead", "undereye", "nose", "cheeks", "upperlip"];
@@ -63,9 +72,13 @@ function planRegions(
     typeof result.zoneSeverity?.jawline === "number" ||
     result.zonesObscured.includes("jawline");
   const wanted = [...CORE, ...(jawlineWanted ? (["jawline"] as const) : [])];
+  // Same order as the on-screen map: most visible pigmentation first, covered last.
+  const rank = (r: RegionKey) =>
+    (result.zonesObscured.includes(r) ? -1000 : 0) +
+    (result.zoneSeverity?.[r] ?? (flagged.has(r) ? 50 : 0));
   const regions = REGION_ORDER.filter(
     (r) => wanted.includes(r) && regionMarkers(r, landmarks).length > 0,
-  );
+  ).sort((a, b) => rank(b) - rank(a));
   return regions.map((region, i) => ({
     region,
     num: i + 1,
@@ -187,7 +200,7 @@ export async function generateReportPdf(opts: {
     );
   }
 
-  const financeTotal = courseTotal(MIN_SESSIONS);
+  const financeTotal = courseTotal(COURSE_SESSIONS);
 
   const dateStr = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
@@ -217,7 +230,7 @@ export async function generateReportPdf(opts: {
     addressLines: [...clinic.lines],
     preparedFor: lead?.firstName?.trim() || undefined,
     dateStr,
-    verdictLabel: meta.label,
+    verdictLabel: meta.chip,
     headline: result.narrative.headline,
     score: result.score,
     narrative: result.narrative.narrative,
@@ -228,10 +241,10 @@ export async function generateReportPdf(opts: {
     faceImageDataUrl,
     faceImageAspect,
     areas,
-    priceFrom: PRICE_GUIDE.from,
+    priceFrom: PRICE_GUIDE.line,
     priceNote: `${SESSIONS_GUIDE.note} ${PRICE_GUIDE.note}`,
     finance: {
-      heading: `Spread the cost · ${MIN_SESSIONS} sessions from ${formatPounds(financeTotal)}`,
+      heading: `Spread the cost · course of ${COURSE_SESSIONS} sessions ${formatPounds(financeTotal)}`,
       rows: [
         {
           name: "Klarna",
@@ -249,5 +262,46 @@ export async function generateReportPdf(opts: {
       note: `*${FINANCE_DISCLAIMER}`,
     },
     disclaimer: DISCLAIMER,
+    spotType: reportSpotType(result),
+    recommendation: reportRecommendation(result),
+    endDisclaimer: REPORT_DISCLAIMER,
   });
+}
+
+function reportRecommendation(result: AnalyzeResult): ReportRecommendation | null {
+  if (!shouldRecommend(result.bucket)) return null;
+  const pitch = pitchFor(result.spotType);
+  return {
+    title: TREATMENT_NAME,
+    subtitle: pitch.subtitle,
+    lead: pitch.lead,
+    comparisons: pitch.comparisons,
+    whyClinic: [...WHY_HSA],
+    priceLine: `${PRICE_GUIDE.line}. Usually ${SESSIONS_GUIDE.course}. Flexible payment plans. Book your free online consultation to get your personal programme.`,
+    smallPrint: `Your practitioner confirms your suitability, plan and number of sessions at your consultation. ${RESULTS_VARY}`,
+  };
+}
+
+function reportSpotType(result: AnalyzeResult): ReportSpotType | null {
+  if (!result.spotType) return null;
+  const type = SPOT_TYPES[result.spotType];
+  const second = result.secondarySpotType
+    ? SPOT_TYPES[result.secondarySpotType]
+    : null;
+  return {
+    name: type.name,
+    commonName: type.commonName,
+    what: type.what,
+    cause: type.cause,
+    secondaryNote: second
+      ? `Your photo also shows signs of ${second.name} (${second.commonName}). Your plan is built around your main type, and your practitioner will tailor it to cover both.`
+      : undefined,
+    steps: PROTOCOL_STEPS.map((p, i) => ({
+      step: p.step,
+      title: p.title,
+      how: type.steps[i].how,
+      why: type.steps[i].why,
+    })),
+    outlook: type.outlook,
+  };
 }

@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Upload, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DisclaimerBanner } from "@/components/compliance/DisclaimerBanner";
-import { CameraCapture } from "@/components/scan/CameraCapture";
+import { ConsultationRequest } from "@/components/compliance/ConsultationRequest";
+import {
+  CameraCapture,
+  inPageCameraAvailable,
+} from "@/components/scan/CameraCapture";
 import { PhotoGuide } from "@/components/scan/PhotoGuide";
 import { useWizard, type MediaType } from "@/store/wizard-store";
 import { fileToDownscaledImage } from "@/lib/image";
@@ -15,12 +19,19 @@ const DEMO_CAPTURE_ASSET =
 export function ConsentCaptureScreen() {
   const imageConsent = useWizard((s) => s.imageConsent);
   const setImageConsent = useWizard((s) => s.setImageConsent);
+  const contactConsent = useWizard((s) => s.contactConsent);
+  const setContactConsent = useWizard((s) => s.setContactConsent);
+  const [needsContact, setNeedsContact] = useState(false);
   const setImage = useWizard((s) => s.setImage);
   const beginScan = useWizard((s) => s.beginScan);
 
   const [mode, setMode] = useState<"choose" | "camera">("choose");
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // The phone's own camera app, via <input capture>. Works where the in-page
+  // preview cannot: plain http, and the Instagram / Facebook in-app browsers.
+  const nativeCameraRef = useRef<HTMLInputElement>(null);
+  const [inPageCameraFailed, setInPageCameraFailed] = useState(false);
   const demoCaptureStartedRef = useRef(false);
 
   // Development-only capture helper: after the normal consent action, load the
@@ -60,6 +71,16 @@ export function ConsentCaptureScreen() {
       }
     })();
   }, [imageConsent]);
+
+  /** The scan is only for clients who asked for a consultation. */
+  function requireContactConsent(): boolean {
+    if (contactConsent) return true;
+    setNeedsContact(true);
+    document
+      .getElementById("consultation-request")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return false;
+  }
 
   function handleCapture(base64: string, mediaType: MediaType) {
     setImageConsent(true);
@@ -102,7 +123,8 @@ export function ConsentCaptureScreen() {
       </h2>
       <p className="mt-3 text-body">
         Our AI gently maps the tone across your face to tailor your result. Your
-        photo is securely sent to our AI provider for this one-time analysis.
+        photo is securely sent to our AI providers and to our own secure analysis
+        server for this one-time analysis and your personal results preview.
         This app does not keep the original upload &mdash; your personalised
         report is emailed to you and saved to your clinic record.
       </p>
@@ -113,18 +135,30 @@ export function ConsentCaptureScreen() {
             onCapture={handleCapture}
             onError={(m) => {
               setError(m);
+              setInPageCameraFailed(true);
               setMode("choose");
             }}
           />
         </div>
       ) : (
         <div className="mt-8 space-y-5">
+          <ConsultationRequest
+            checked={contactConsent}
+            onChange={(v) => {
+              setContactConsent(v);
+              if (v) setNeedsContact(false);
+            }}
+            invalid={needsContact}
+          />
+
           <PhotoGuide />
 
           <p className="rounded-2xl border border-sage/25 bg-sage/[0.07] px-4 py-3 text-xs leading-relaxed text-body/80">
             <Lock size={13} className="mr-1 inline text-sage-deep" />
             By choosing an option below, I explicitly consent to my selfie being
-            securely sent to the AI provider for this one-time pigmentation
+            securely sent to our AI providers (for the analysis and an AI
+            preview of my possible result) and to Harley Street Aesthetics&rsquo;
+            own secure analysis server for this one-time pigmentation
             analysis. My personalised report, which includes my photo, will be
             emailed to me and saved to my clinic contact record.
           </p>
@@ -140,8 +174,14 @@ export function ConsentCaptureScreen() {
               size="lg"
               className="flex-1"
               onClick={() => {
+                if (!requireContactConsent()) return;
                 setImageConsent(true);
-                setMode("camera");
+                setError(null);
+                if (inPageCameraFailed || !inPageCameraAvailable()) {
+                  nativeCameraRef.current?.click();
+                } else {
+                  setMode("camera");
+                }
               }}
             >
               <Camera size={18} /> Use camera
@@ -151,12 +191,21 @@ export function ConsentCaptureScreen() {
               size="lg"
               className="flex-1"
               onClick={() => {
+                if (!requireContactConsent()) return;
                 setImageConsent(true);
                 fileRef.current?.click();
               }}
             >
               <Upload size={18} /> Upload photo
             </Button>
+            <input
+              ref={nativeCameraRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="sr-only"
+              onChange={handleUpload}
+            />
             <input
               ref={fileRef}
               type="file"

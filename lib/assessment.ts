@@ -32,7 +32,13 @@ export function buildResult(
   assessment: PhotoAssessment,
   usedPhoto: boolean,
 ): AnalyzeResult {
+  // A pigmentation type is only named when the photo was readable and the
+  // concern is in scope — never on a retake or an out-of-scope result.
+  const nameType =
+    assessment.framingAdequate && assessment.suitability !== "alternative";
   return {
+    spotType: nameType ? assessment.spotType : null,
+    secondarySpotType: nameType ? assessment.secondarySpotType : null,
     bucket: assessment.suitability,
     score: scoreInBucket(assessment.suitability, assessment.score),
     hardFlags: [],
@@ -60,12 +66,14 @@ export function genericFallbackResult(usedPhoto: boolean): AnalyzeResult {
     narrative: {
       headline: "Let's look at your skin together",
       narrative:
-        "We couldn't fully read your photo this time, but that's no problem at all. The surest way to understand your pigmentation — and what our Signature Pigmentation Removal Treatment could do for it — is a quick chat with our doctor-led team.",
+        "We couldn't fully read your photo this time, but that's no problem at all. The surest way to understand your pigmentation — and what our revolutionary new Signature Pigmentation Treatment could do for it — is a quick chat with our doctor-led team.",
       observedAreas: [],
       encouragement:
         "Book your free online consultation whenever you're ready — we'll talk you through everything, with no pressure.",
     },
     narrativeSource: "fallback",
+    spotType: null,
+    secondarySpotType: null,
     usedPhoto,
     zonesObscured: [],
     makeupDetected: false,

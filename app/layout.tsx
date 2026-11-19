@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Montserrat } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "@/lib/constants";
 import MetaPixel from "@/components/analytics/MetaPixel";
+import GoogleAds from "@/components/analytics/GoogleAds";
+import GoogleTagManager from "@/components/analytics/GoogleTagManager";
 
-const playfair = Playfair_Display({
+const playfair = Cormorant_Garamond({
   weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   subsets: ["latin"],
@@ -12,7 +14,7 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const montserrat = Montserrat({
+const montserrat = Manrope({
   subsets: ["latin"],
   variable: "--font-montserrat",
   display: "swap",
@@ -22,12 +24,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Free AI Pigmentation & Dark Spot Analysis · Harley Street Aesthetics",
   description:
-    "A 60-second AI analysis of dark spots, sun damage and uneven tone — and how our Signature Pigmentation Removal Treatment can help. Harley Street Aesthetics, London & Glasgow.",
+    "A 60-second AI analysis of dark spots, sun damage and uneven tone — and how our revolutionary new Signature Pigmentation Treatment can help. Harley Street Aesthetics, London & Glasgow.",
   openGraph: {
     title:
       "Free AI Pigmentation & Dark Spot Analysis · Harley Street Aesthetics",
     description:
-      "Take the 60-second pigmentation analysis with London's premier aesthetic centre and see what our Signature Pigmentation Removal Treatment could do for your skin.",
+      "Take the 60-second pigmentation analysis with London & Glasgow's premier aesthetic clinic and see what our revolutionary new Signature Pigmentation Treatment could do for your skin.",
     url: SITE_URL,
     siteName: "Harley Street Aesthetics",
     locale: "en_GB",
@@ -47,6 +49,8 @@ export default function RootLayout({
       <body className="min-h-full">
         {children}
         <MetaPixel />
+        <GoogleAds />
+        <GoogleTagManager />
       </body>
     </html>
   );

@@ -5,13 +5,19 @@ import { useEffect, useState } from "react";
 import { Sparkles, Info, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWizard } from "@/store/wizard-store";
-import { SuitabilityGauge } from "@/components/result/SuitabilityGauge";
 import { FaceConcernMap } from "@/components/result/FaceConcernMap";
 import { WhatToExpect } from "@/components/result/WhatToExpect";
+import { SpotTypeCard } from "@/components/result/SpotTypeCard";
+import { RecommendedTreatment } from "@/components/result/RecommendedTreatment";
+import { PigmentationSummary } from "@/components/result/PigmentationSummary";
+import { shouldRecommend } from "@/lib/protocol-pitch";
+import { scrollToBooking } from "@/components/result/BookingCalendar";
+import { REPORT_DISCLAIMER, SPOT_TYPES } from "@/lib/spot-types";
 import { ResultsGallery } from "@/components/result/ResultsGallery";
 import { Testimonials } from "@/components/result/Testimonials";
 import { BookingCTA, StickyBookingBar } from "@/components/result/BookingCTA";
 import { BookingCalendar } from "@/components/result/BookingCalendar";
+import { NextStepCard } from "@/components/result/NextStepCard";
 import { FinanceCalculator } from "@/components/result/FinanceCalculator";
 import { trackInsight } from "@/lib/visit-context";
 import { DisclaimerBanner } from "@/components/compliance/DisclaimerBanner";
@@ -82,24 +88,28 @@ export function ResultScreen() {
     <div className="mx-auto w-full max-w-2xl px-6 pb-28 pt-10 sm:pb-10">
       <motion.div {...reveal(0)} className="flex flex-col items-center text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-peach/30 bg-peach/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-peach">
-          <Sparkles size={13} /> {meta.label}
+          <Sparkles size={13} /> {meta.chip}
         </span>
         <h2 className="mt-4 font-serif text-[32px] leading-tight text-heading sm:text-[40px]">
           {narrative.headline}
         </h2>
       </motion.div>
 
-      <motion.div {...reveal(0.25)} className="mt-8 flex justify-center">
-        <SuitabilityGauge
-          score={result.score}
-          accent={meta.accent}
-          label={meta.label}
-        />
+      <motion.div {...reveal(0.1)} className="mt-8">
+        <NextStepCard />
       </motion.div>
 
-      <motion.div {...reveal(0.4)} className="mt-8">
-        <BookingCTA label={meta.ctaLabel} placement="top" showPhone={false} />
-      </motion.div>
+      {result.usedPhoto && (
+        <motion.div {...reveal(0.2)} className="mt-8">
+          <PigmentationSummary
+            spotType={result.spotType}
+            secondary={result.secondarySpotType}
+            zoneSeverity={result.zoneSeverity}
+            observedAreas={narrative.observedAreas}
+            zonesObscured={result.zonesObscured}
+          />
+        </motion.div>
+      )}
 
       <motion.div
         {...reveal(0.5)}
@@ -123,6 +133,11 @@ export function ResultScreen() {
         <p className="mt-5 border-t border-sage/15 pt-4 text-[15px] font-medium leading-relaxed text-heading">
           {narrative.encouragement}
         </p>
+      </motion.div>
+
+
+      <motion.div {...reveal(0.55)} className="mt-10">
+        <FaceConcernMap />
       </motion.div>
 
       {result.usedPhoto && result.zonesObscured.length > 0 && (
@@ -159,24 +174,46 @@ export function ResultScreen() {
         </motion.div>
       )}
 
-      <motion.div {...reveal(0.6)} className="mt-10">
-        <FaceConcernMap />
+
+      <motion.div {...reveal(0.4)} className="mt-8">
+        <p className="mb-4 text-center text-sm leading-relaxed text-body">
+          {result.spotType
+            ? `Your photo suggests a ${SPOT_TYPES[result.spotType].name.toLowerCase()} pattern. Discuss this finding, the affected areas and suitable options with our ${clinic.city} team.`
+            : `Your photo alone cannot confirm a pigmentation type. Our ${clinic.city} team can help you understand the marks and discuss suitable options.`}
+        </p>
+        <BookingCTA label="Discuss my pigmentation report" placement="top" showPhone={false} />
       </motion.div>
 
-      <motion.div {...reveal(0.65)} className="mt-10">
+      {result.spotType && (
+        <motion.div {...reveal(0.6)} className="mt-10">
+          <SpotTypeCard
+            primary={result.spotType}
+            secondary={result.secondarySpotType}
+          />
+        </motion.div>
+      )}
+
+
+      {shouldRecommend(result.bucket) && (
+        <motion.div {...reveal(0.64)} className="mt-8">
+          <RecommendedTreatment spotType={result.spotType} />
+        </motion.div>
+      )}
+
+      <motion.div {...reveal(0.66)} className="mt-10">
         <BookingCalendar />
       </motion.div>
 
       <motion.div {...reveal(0.7)} className="mt-8">
-        <WhatToExpect />
+        <WhatToExpect spotType={result.spotType} />
       </motion.div>
 
-      <motion.div {...reveal(0.75)} className="mt-8">
-        <FinanceCalculator />
-      </motion.div>
-
-      <motion.div {...reveal(0.8)} className="mt-10">
+      <motion.div {...reveal(0.75)} className="mt-10">
         <ResultsGallery />
+      </motion.div>
+
+      <motion.div {...reveal(0.8)} className="mt-8">
+        <FinanceCalculator />
       </motion.div>
 
       <motion.div {...reveal(0.9)} className="mt-10">
@@ -210,7 +247,24 @@ export function ResultScreen() {
         <DisclaimerBanner className="mt-8" />
       </motion.div>
 
-      <StickyBookingBar label={meta.ctaLabel} />
+      <motion.p
+        {...reveal(1.15)}
+        className="mt-6 text-center text-[13px] font-medium leading-relaxed text-heading"
+      >
+        {REPORT_DISCLAIMER}{" "}
+        <button
+          type="button"
+          onClick={() => {
+            trackInsight(analysisId, "cta_click", "disclaimer");
+            scrollToBooking();
+          }}
+          className="text-peach underline underline-offset-2"
+        >
+          Book now
+        </button>
+      </motion.p>
+
+      <StickyBookingBar label="Free online consultation" />
     </div>
   );
 }

@@ -15,6 +15,8 @@ const assessment: PhotoAssessment = {
   zoneSeverity: { cheeks: 62, nose: 34 },
   zoneImprovement: { cheeks: 68, nose: 41 },
   framingAdequate: true,
+  spotType: "melasma",
+  secondarySpotType: "solar_lentigines",
   narrative: {
     headline: "h",
     narrative: "n",
@@ -50,6 +52,18 @@ describe("buildResult", () => {
     expect(r.framingAdequate).toBe(true);
     expect(r.narrativeSource).toBe("claude");
     expect(r.usedPhoto).toBe(true);
+    expect(r.spotType).toBe("melasma");
+    expect(r.secondarySpotType).toBe("solar_lentigines");
+  });
+
+  it("never names a pigmentation type on a retake or an out-of-scope result", () => {
+    for (const r of [
+      buildResult({ ...assessment, framingAdequate: false }, true),
+      buildResult({ ...assessment, suitability: "alternative" }, true),
+    ]) {
+      expect(r.spotType).toBeNull();
+      expect(r.secondarySpotType).toBeNull();
+    }
   });
 });
 
@@ -64,6 +78,7 @@ describe("genericFallbackResult", () => {
     expect(r.zoneImprovement).toEqual({});
     // A failure isn't a framing problem — must not trigger a retake loop.
     expect(r.framingAdequate).toBe(true);
+    expect(r.spotType).toBeNull();
   });
 
   it("never names a medical condition in fallback copy", () => {

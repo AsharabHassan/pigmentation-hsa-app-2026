@@ -44,6 +44,8 @@ CREATE INDEX IF NOT EXISTS analyses_email_idx ON analyses (email);
 CREATE INDEX IF NOT EXISTS analyses_phone_key_idx ON analyses (phone_key);
 
 ALTER TABLE analyses ADD COLUMN IF NOT EXISTS from_google_ad boolean NOT NULL DEFAULT false;
+ALTER TABLE analyses ADD COLUMN IF NOT EXISTS spot_type text;
+ALTER TABLE analyses ADD COLUMN IF NOT EXISTS secondary_spot_type text;
 
 CREATE TABLE IF NOT EXISTS events (
   id           bigserial PRIMARY KEY,
