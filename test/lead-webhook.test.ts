@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { leadWebhookTarget } from "@/lib/lead-webhook";
 import type { AnalyzeResult, Lead } from "@/lib/types";
 
-vi.mock("@/lib/ghl-contact", () => ({
-  ensureLeadRoutingInGhl: vi.fn(async () => ({ ok: true, tagged: true })),
+const routing = vi.hoisted(() => ({
+  ghl: vi.fn(async (...args: unknown[]) => ({ ok: args.length > 0, tagged: true })),
+  crm: vi.fn(async (...args: unknown[]) => ({ ok: args.length > 0, tagged: true, contactId: 4773 })),
 }));
+vi.mock("@/lib/ghl-contact", () => ({ ensureLeadRoutingInGhl: routing.ghl }));
+vi.mock("@/lib/crm-lead", () => ({ ensureLeadInCrm: routing.crm }));
 vi.mock("@/lib/insights-store", () => ({ attachLead: vi.fn(async () => null) }));
 
 const GHL = "https://services.leadconnectorhq.com/hooks/ghl-example";
@@ -150,5 +153,30 @@ describe("lead route delivery target", () => {
     stubEnv({ GHL_WEBHOOK_URL: GHL, CRM_LEAD_WEBHOOK_URL: extra });
     const { urls } = await post("london");
     expect(urls.sort()).toEqual([GHL, extra].sort());
+  });
+
+  it("routes the contact through the CRM API, with its answers in custom fields, when CRM_API_KEY is set", async () => {
+    routing.ghl.mockClear();
+    routing.crm.mockClear();
+    stubEnv({ CRM_WEBHOOK_URL_LONDON: LONDON });
+    vi.stubEnv("CRM_API_KEY", "crm-test-key");
+    const { json } = await post("london");
+    expect(json).toMatchObject({ ok: true, routingEnsured: true });
+    expect(routing.ghl).not.toHaveBeenCalled();
+    expect(routing.crm).toHaveBeenCalledTimes(1);
+    const input = routing.crm.mock.calls[0][0] as { tags: string[]; custom: Record<string, string>; source: string };
+    expect(input.source).toBe("Pigmentation Analyzer · London");
+    expect(input.tags).toEqual(expect.arrayContaining(["pigmentation-analyzer", "hsa-clinic-london", "pigmentation-great"]));
+    expect(input.custom).toMatchObject({ suitability_score: "88", assessment_label: "Strong candidate", hsa_meta_tracking_consent: "false" });
+  });
+
+  it("keeps GoHighLevel routing when only the GHL env is set", async () => {
+    routing.ghl.mockClear();
+    routing.crm.mockClear();
+    stubEnv({ GHL_WEBHOOK_URL: GHL });
+    vi.stubEnv("CRM_API_KEY", undefined);
+    await post("london");
+    expect(routing.crm).not.toHaveBeenCalled();
+    expect(routing.ghl).toHaveBeenCalledTimes(1);
   });
 });

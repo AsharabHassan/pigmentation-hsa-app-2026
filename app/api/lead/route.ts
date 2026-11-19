@@ -7,6 +7,9 @@ import {
 import { serverEnv } from "@/lib/env";
 import { leadWebhookTarget, type LeadWebhookTarget } from "@/lib/lead-webhook";
 import { ensureLeadRoutingInGhl } from "@/lib/ghl-contact";
+import { crmConfigured } from "@/lib/crm-api";
+import { crmLeadCustomFields } from "@/lib/crm-fields";
+import { ensureLeadInCrm } from "@/lib/crm-lead";
 import { attachLead } from "@/lib/insights-store";
 import { SPOT_TYPE_KEYS } from "@/lib/spot-types";
 import { CALL_TIME_KEYS } from "@/lib/consultation-consent";
@@ -287,11 +290,18 @@ export async function POST(request: Request): Promise<Response> {
   const crmPromise = crmWebhook
     ? deliverWebhook(crmWebhook, payload)
     : Promise.resolve<DeliveryResult>({ delivered: false, attempts: 0 });
-  const routingPromise = ensureLeadRoutingInGhl({
+  // The contact itself, its tags and (CRM) its answers in custom fields: the
+  // clinic CRM's API when CRM_API_KEY is set, else GoHighLevel's as before.
+  const routingDestination = crmConfigured() ? "crm" : "ghl";
+  const routingInput = {
     lead: body.lead,
     source: `Pigmentation Analyzer · ${payload.clinicLocationLabel}`,
     tags: payload.tags,
-  });
+  };
+  const routingPromise =
+    routingDestination === "crm"
+      ? ensureLeadInCrm({ ...routingInput, custom: crmLeadCustomFields(payload) })
+      : ensureLeadRoutingInGhl(routingInput);
   const [delivery, routing, , crmDelivery] = await Promise.all([
     deliveryPromise,
     routingPromise,
@@ -310,6 +320,8 @@ export async function POST(request: Request): Promise<Response> {
     attempts: delivery.attempts,
     trackingQueued,
     routingEnsured: routing.ok && routing.tagged === true,
+    routingDestination,
+    ...(routing.error ? { routingError: routing.error } : {}),
     webhookConfigured: Boolean(target),
     destination: target?.destination ?? "none",
     crmConfigured: Boolean(crmWebhook),

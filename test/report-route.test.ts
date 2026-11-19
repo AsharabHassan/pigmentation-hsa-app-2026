@@ -1,10 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 
-const { deliverReportToGhl } = vi.hoisted(() => ({
+const { deliverReportToGhl, deliverReportToCrm } = vi.hoisted(() => ({
   deliverReportToGhl: vi.fn(),
+  deliverReportToCrm: vi.fn(),
 }));
 
 vi.mock("@/lib/ghl-report", () => ({ deliverReportToGhl }));
+vi.mock("@/lib/crm-report", () => ({ deliverReportToCrm }));
 
 import { POST, isSameOriginReportRequest } from "@/app/api/report/route";
 
@@ -42,8 +44,11 @@ function reportRequest(
 }
 
 beforeEach(() => {
+  delete process.env.CRM_API_KEY;
   deliverReportToGhl.mockReset();
   deliverReportToGhl.mockResolvedValue({ ok: true, emailed: true, noted: true });
+  deliverReportToCrm.mockReset();
+  deliverReportToCrm.mockResolvedValue({ ok: true, emailed: true, noted: true });
 });
 
 describe("POST /api/report", () => {
@@ -160,5 +165,63 @@ describe("same-origin report guard", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("POST /api/report through the clinic CRM", () => {
+  afterEach(() => {
+    delete process.env.CRM_API_KEY;
+    delete process.env.GHL_API_TOKEN;
+    delete process.env.GHL_LOCATION_ID;
+  });
+
+  it("uses the CRM, not GoHighLevel, when CRM_API_KEY is set", async () => {
+    process.env.CRM_API_KEY = "crm-test-key";
+    process.env.GHL_API_TOKEN = "ghl-token";
+    process.env.GHL_LOCATION_ID = "ghl-location";
+    const response = await POST(reportRequest());
+    await expect(response.json()).resolves.toMatchObject({ ok: true });
+    expect(deliverReportToGhl).not.toHaveBeenCalled();
+    expect(deliverReportToCrm).toHaveBeenCalledTimes(1);
+
+    const input = deliverReportToCrm.mock.calls[0][0];
+    expect(input).toMatchObject({
+      email: "jane@example.com",
+      fileName: "Pigmentation-Analysis-Report-Jane.pdf",
+      subject: "Jane pigmentation analysis report",
+      fileLabel: "London pigmentation analysis report",
+      tags: expect.arrayContaining(["hsa-pigmentation-lead", "hsa-clinic-london"]),
+    });
+    // Same email as GoHighLevel's, with the CRM's private link instead of an attachment.
+    const link = "https://app.harleystreetaesthetic.co.uk/file/7/abc";
+    const html: string = input.emailHtml(link);
+    expect(html).toContain(`href="${link}"`);
+    expect(html).toContain("Hi Jane");
+    expect(html).toContain("Choose your consultation time");
+    expect(html).toContain(
+      'href="https://app.harleystreetaesthetic.co.uk/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-"',
+    );
+    expect(html).not.toContain("attached as a PDF");
+    expect(html).not.toContain("{{");
+    expect(input.noteBody).toContain("{url}");
+  });
+
+  it("keeps GoHighLevel when only the GHL env is set", async () => {
+    process.env.GHL_API_TOKEN = "ghl-token";
+    process.env.GHL_LOCATION_ID = "ghl-location";
+    await POST(reportRequest());
+    expect(deliverReportToCrm).not.toHaveBeenCalled();
+    expect(deliverReportToGhl).toHaveBeenCalledTimes(1);
+    const input = deliverReportToGhl.mock.calls[0][0];
+    expect(input.emailHtml).toContain("attached as a PDF");
+  });
+
+  it("still answers 200 when the CRM delivery fails", async () => {
+    process.env.CRM_API_KEY = "crm-test-key";
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    deliverReportToCrm.mockResolvedValue({ ok: false, error: "contact-upsert 503" });
+    const response = await POST(reportRequest());
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: false });
   });
 });
