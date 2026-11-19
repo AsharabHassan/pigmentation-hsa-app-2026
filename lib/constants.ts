@@ -82,11 +82,11 @@ export const BOOKING_URLS: Record<ClinicLocationKey, string> = {
 };
 
 // The clinic's own CRM booking page for the free online consultation (since
-// the GoHighLevel cutover on 20 Nov 2026). One page for both clinics. It can't
-// be shown in an iframe (the CRM sends X-Frame-Options: DENY) and it doesn't
-// read name/email/phone from the link, so the app opens it in a new tab.
+// the GoHighLevel cutover on 20 Nov 2026), on the clinic's own CRM address.
+// One page for both clinics. This address may be framed, so the result page
+// embeds it; it reads no name/email/phone from the link, so nothing is prefilled.
 export const CRM_BOOKING_URL =
-  "https://app.crm.strategyguys.agency/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-";
+  "https://app.harleystreetaesthetic.co.uk/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-";
 
 export const CALENDAR_URLS: Record<ClinicLocationKey, string> = {
   london: CRM_BOOKING_URL,

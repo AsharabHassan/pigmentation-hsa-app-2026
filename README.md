@@ -108,10 +108,12 @@ data, and the list of people with their booking status.
 
 Consultations are booked on the clinic's CRM booking page
 (`CRM_BOOKING_URL` in `lib/constants.ts`, the same page for London and Glasgow:
-https://app.crm.strategyguys.agency/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-).
-The CRM sends `X-Frame-Options: DENY` / `frame-ancestors 'none'`, so it cannot be
-embedded: the result page shows a booking card whose button opens it in a new tab,
-and the report email and PDF link to it. The page reads no contact details from
+https://app.harleystreetaesthetic.co.uk/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-).
+This address sends no `X-Frame-Options` / `frame-ancestors`, so the result page
+embeds it in an iframe (sandboxed: forms, scripts, same-origin, popups, top-level
+navigation on a click), with a plain "Open the booking page" link under it as a
+fallback; the report email and PDF link to it. (The CRM's agency address refuses
+to be framed, so keep this clinic address.) The page reads no contact details from
 query parameters, so nothing is prefilled. `NEXT_PUBLIC_BOOKING_CALENDAR_URL` and
 `NEXT_PUBLIC_GLASGOW_BOOKING_CALENDAR_URL` are no longer read.
 

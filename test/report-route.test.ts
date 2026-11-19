@@ -92,7 +92,7 @@ describe("POST /api/report", () => {
     const input = deliverReportToGhl.mock.calls[0][0];
     expect(input.emailHtml).toContain("Harley Street Aesthetics Glasgow");
     expect(input.emailHtml).toContain(
-      'href="https://app.crm.strategyguys.agency/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-"',
+      'href="https://app.harleystreetaesthetic.co.uk/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-"',
     );
     expect(input.emailHtml).not.toContain("first_name=");
     expect(input.emailHtml).not.toContain("already filled in");

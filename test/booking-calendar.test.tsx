@@ -5,30 +5,49 @@ import { BookingCTA } from "@/components/result/BookingCTA";
 import { CRM_BOOKING_URL } from "@/lib/constants";
 import { useWizard } from "@/store/wizard-store";
 
-// The CRM booking page refuses to be framed (X-Frame-Options: DENY), so the
-// result page links to it instead of embedding a calendar.
-describe("consultation booking card", () => {
+// The clinic's CRM booking page (app.harleystreetaesthetic.co.uk) may be
+// framed, so the result page embeds it, with a plain link as a fallback.
+describe("consultation booking calendar", () => {
   beforeEach(() => {
     useWizard.getState().reset();
   });
   afterEach(cleanup);
 
-  it("opens the CRM booking page in a new tab, with no iframe", () => {
+  it("embeds the CRM booking page in a sandboxed iframe", () => {
+    expect(CRM_BOOKING_URL).toBe(
+      "https://app.harleystreetaesthetic.co.uk/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-",
+    );
     const { container } = render(<BookingCalendar />);
-    const link = screen.getByRole("link", { name: /See available times/ });
+    const frame = container.querySelector("iframe");
+    expect(frame).not.toBeNull();
+    expect(frame).toHaveAttribute("src", CRM_BOOKING_URL);
+    expect(frame).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    const sandbox = frame?.getAttribute("sandbox") ?? "";
+    for (const token of ["allow-forms", "allow-scripts", "allow-same-origin", "allow-popups", "allow-top-navigation-by-user-activation"]) {
+      expect(sandbox.split(" ")).toContain(token);
+    }
+    expect(frame).not.toHaveAttribute("scrolling");
+    expect(screen.getByRole("status")).toHaveTextContent(/Loading available times/);
+    fireEvent.load(frame!);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("keeps a plain link to the booking page under the calendar", () => {
+    render(<BookingCalendar />);
+    const link = screen.getByRole("link", { name: /Open the booking page/ });
     expect(link).toHaveAttribute("href", CRM_BOOKING_URL);
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(container.querySelector("iframe")).toBeNull();
-    expect(screen.getByText(/new tab/)).toBeInTheDocument();
   });
 
-  it("never promises prefilled details and keeps the link free of contact data", () => {
+  it("never promises prefilled details and sends no contact data", () => {
     useWizard.getState().setLead({ firstName: "Example", lastName: "Visitor", email: "example@example.com", phone: "07700900123" });
-    render(<BookingCalendar />);
-    expect(screen.queryByText(/already filled in/)).toBeNull();
-    const link = screen.getByRole("link", { name: /See available times/ });
-    expect(link.getAttribute("href")).toBe(CRM_BOOKING_URL);
+    const { container } = render(<BookingCalendar />);
+    expect(screen.queryByText(/filled in/)).toBeNull();
+    const src = container.querySelector("iframe")?.getAttribute("src") ?? "";
+    expect(src).toBe(CRM_BOOKING_URL);
+    expect(src).not.toContain("first_name");
+    expect(src).not.toContain("example%40example.com");
     expect(screen.getByText(/Example, choose/)).toBeInTheDocument();
   });
 

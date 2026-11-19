@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarHeart,
   Check,
   Clock,
   ExternalLink,
+  Loader2,
   ShieldCheck,
   Video,
 } from "lucide-react";
@@ -25,19 +26,37 @@ export function scrollToBooking(): void {
   calendar.focus({ preventScroll: true });
 }
 
+const FRAME_ID = "hsa-consultation-calendar";
+
 /**
- * The free online consultation booking step. Bookings are taken on the
- * clinic's own CRM booking page (since the GoHighLevel cutover). That page
- * can't be embedded (the CRM sends X-Frame-Options: DENY and
- * frame-ancestors 'none') and reads no contact details from the link, so this
- * card opens it in a new tab and the report stays open behind it.
+ * The free online consultation booking step: the clinic's own CRM booking page
+ * (since the GoHighLevel cutover), embedded in the result page. The page sends
+ * no resize messages, so the frame has a fixed height and scrolls inside. It
+ * reads no contact details from the link, so nothing is prefilled. A plain
+ * link under the frame opens the same page in a new tab.
  */
 export function BookingCalendar({ points: customPoints }: { points?: string[] } = {}) {
   const clinic = useClinicLocation();
   const lead = useWizard((s) => s.lead);
   const result = useWizard((s) => s.result);
   const sectionRef = useRef<HTMLElement>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [stalled, setStalled] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const analysisId = result?.analysisId;
+
+  // Only a load event that hasn't come within 12 s counts as stalled.
+  useEffect(() => {
+    if (loaded) return;
+    const timer = window.setTimeout(() => setStalled(true), 12_000);
+    return () => window.clearTimeout(timer);
+  }, [loaded, attempt]);
+
+  function retry() {
+    setLoaded(false);
+    setStalled(false);
+    setAttempt((value) => value + 1);
+  }
 
   useEffect(() => {
     const node = sectionRef.current;
@@ -120,22 +139,55 @@ export function BookingCalendar({ points: customPoints }: { points?: string[] } 
 
       </div>
 
-      <div className="mt-7 flex flex-col items-center px-5 sm:px-8">
+      <div className="mt-7 px-2 pb-2 sm:px-3 sm:pb-3">
+        <div className="relative overflow-hidden rounded-[1.5rem] bg-white ring-1 ring-peach/40">
+          <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] bg-[#faf7ef] px-4 py-2.5">
+            <span className="flex items-center gap-2 text-xs font-semibold text-[#1c1a16]">
+              <span className="relative flex h-2 w-2">
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#b8902a]" />
+              </span>
+              {loaded ? "Live availability" : "Consultation calendar"}
+            </span>
+          </div>
+
+          {!loaded && (
+            <div
+              role="status"
+              className="absolute inset-x-0 bottom-0 top-[41px] z-10 flex flex-col items-center justify-center gap-3 bg-white px-6 text-center"
+            >
+              {!stalled && <Loader2 size={22} className="animate-spin text-[#b8902a]" />}
+              <span className="text-xs font-medium text-[#5c5852]">
+                {stalled ? "The calendar is taking a while to load. Try loading it again." : "Loading available times…"}
+              </span>
+              {stalled && <button type="button" onClick={retry} className="min-h-11 rounded-full border border-[#b8902a] px-5 text-sm font-semibold text-[#715320]">Retry calendar</button>}
+            </div>
+          )}
+
+          <iframe
+            key={attempt}
+            src={clinic.calendarUrl}
+            id={FRAME_ID}
+            title="Choose your free online consultation time"
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+            onLoad={() => setLoaded(true)}
+            className="block h-[1100px] w-full border-0 sm:h-[900px]"
+          />
+        </div>
+      </div>
+
+      <p className="px-6 pt-3 text-center text-xs text-body">
+        Calendar not showing?{" "}
         <a
           href={clinic.calendarUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => trackInsight(analysisId, "cta_click", "calendar-direct")}
-          className="inline-flex h-14 min-h-14 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-peach-deep via-peach to-peach-light px-9 text-base font-semibold tracking-tight text-ink shadow-[0_14px_40px_-12px_rgba(212,175,55,0.7)] transition-colors duration-300 hover:from-peach hover:via-peach-light hover:to-peach focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-peach-deep focus-visible:ring-offset-2 focus-visible:ring-offset-cream sm:w-auto"
+          className="inline-flex items-center gap-1 font-semibold text-peach underline"
         >
-          <CalendarHeart size={18} /> See available times
-          <ExternalLink size={15} aria-hidden />
+          Open the booking page <ExternalLink size={12} aria-hidden />
         </a>
-        <p className="mt-3 max-w-sm text-center text-xs leading-relaxed text-body/75">
-          Opens our secure booking page in a new tab — your report stays open
-          here.
-        </p>
-      </div>
+      </p>
 
       <p className="px-6 pb-6 pt-3 text-center text-xs leading-relaxed text-body/65">
         Your confirmation arrives by email. Need to change it later? Call{" "}

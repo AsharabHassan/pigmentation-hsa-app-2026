@@ -61,7 +61,7 @@ describe("insights helpers", () => {
 describe("consultation booking page", () => {
   it("sends both clinics to the CRM's free online consultation page", () => {
     expect(CRM_BOOKING_URL).toBe(
-      "https://app.crm.strategyguys.agency/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-",
+      "https://app.harleystreetaesthetic.co.uk/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-",
     );
     expect(CALENDAR_URLS).toEqual({ london: CRM_BOOKING_URL, glasgow: CRM_BOOKING_URL });
   });
