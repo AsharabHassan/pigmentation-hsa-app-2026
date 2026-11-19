@@ -81,17 +81,16 @@ export const BOOKING_URLS: Record<ClinicLocationKey, string> = {
     WORKING_GLASGOW_BOOKING_URL,
 };
 
-// GoHighLevel calendar embedded on the result page. One shared consultation
-// calendar today; each clinic can be pointed at its own via public env.
-const DEFAULT_CALENDAR_URL =
-  "https://link.harleystreetaesthetic.co.uk/widget/bookings/aesthetic-consultant-1";
+// The clinic's own CRM booking page for the free online consultation (since
+// the GoHighLevel cutover on 20 Nov 2026). One page for both clinics. It can't
+// be shown in an iframe (the CRM sends X-Frame-Options: DENY) and it doesn't
+// read name/email/phone from the link, so the app opens it in a new tab.
+export const CRM_BOOKING_URL =
+  "https://app.crm.strategyguys.agency/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-";
 
 export const CALENDAR_URLS: Record<ClinicLocationKey, string> = {
-  london: process.env.NEXT_PUBLIC_BOOKING_CALENDAR_URL ?? DEFAULT_CALENDAR_URL,
-  glasgow:
-    process.env.NEXT_PUBLIC_GLASGOW_BOOKING_CALENDAR_URL ??
-    process.env.NEXT_PUBLIC_BOOKING_CALENDAR_URL ??
-    DEFAULT_CALENDAR_URL,
+  london: CRM_BOOKING_URL,
+  glasgow: CRM_BOOKING_URL,
 };
 
 /** UK numbers in the +44 form GoHighLevel's phone field expects. */
@@ -102,40 +101,6 @@ export function toE164Uk(phone: string): string {
   if (digits.startsWith("44")) return `+${digits}`;
   if (digits.startsWith("0")) return `+44${digits.slice(1)}`;
   return digits;
-}
-
-type CalendarLead = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-} | null;
-
-/** The field names GoHighLevel's calendar reads to prefill its contact form. */
-export function calendarPrefill(lead: CalendarLead): Record<string, string> {
-  if (!lead) return {};
-  return {
-    first_name: lead.firstName,
-    last_name: lead.lastName,
-    email: lead.email,
-    phone: toE164Uk(lead.phone),
-  };
-}
-
-/** Calendar link with the visitor's details prefilled, so booking is two taps. */
-export function prefilledCalendarUrl(
-  calendarUrl: string,
-  lead: CalendarLead,
-): string {
-  try {
-    const url = new URL(calendarUrl);
-    for (const [name, value] of Object.entries(calendarPrefill(lead))) {
-      url.searchParams.set(name, value);
-    }
-    return url.toString();
-  } catch {
-    return calendarUrl;
-  }
 }
 
 export const DEFAULT_CLINIC_LOCATION: ClinicLocationKey = "london";

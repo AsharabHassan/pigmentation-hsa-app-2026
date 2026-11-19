@@ -5,6 +5,7 @@ import {
   createServerMetaConversion,
 } from "@/lib/ghl";
 import { serverEnv } from "@/lib/env";
+import { leadWebhookTarget, type LeadWebhookTarget } from "@/lib/lead-webhook";
 import { ensureLeadRoutingInGhl } from "@/lib/ghl-contact";
 import { attachLead } from "@/lib/insights-store";
 import { SPOT_TYPE_KEYS } from "@/lib/spot-types";
@@ -212,7 +213,8 @@ export async function deliverWebhook(
   return { delivered: false, attempts: DELIVERY_ATTEMPTS };
 }
 
-// Forward the lead to GoHighLevel. Delivery failure never blocks result access.
+// Forward the lead to the clinic's CRM (or GoHighLevel until its CRM webhook
+// is set). Delivery failure never blocks result access.
 export async function POST(request: Request): Promise<Response> {
   let raw: unknown;
   try {
@@ -263,18 +265,24 @@ export async function POST(request: Request): Promise<Response> {
     preferredCallTime: body.preferredCallTime,
   });
 
-  let webhook: string | undefined;
+  // The clinic's own CRM webhook when set (CRM_WEBHOOK_URL_LONDON / _GLASGOW),
+  // otherwise GoHighLevel's — same payload either way.
+  let target: LeadWebhookTarget | undefined;
   let crmWebhook: string | undefined;
   try {
-    webhook = serverEnv().GHL_WEBHOOK_URL;
-    crmWebhook = serverEnv().CRM_LEAD_WEBHOOK_URL;
+    const env = serverEnv();
+    target = leadWebhookTarget(body.clinicLocation, env);
+    crmWebhook = env.CRM_LEAD_WEBHOOK_URL;
   } catch {
-    webhook = undefined;
+    target = undefined;
     crmWebhook = undefined;
   }
+  // The older extra copy (CRM_LEAD_WEBHOOK_URL) is skipped when it is the same
+  // address as the main target, so the CRM never gets the lead twice.
+  if (crmWebhook && crmWebhook === target?.url) crmWebhook = undefined;
 
-  const deliveryPromise = webhook
-    ? deliverWebhook(webhook, payload)
+  const deliveryPromise = target
+    ? deliverWebhook(target.url, payload)
     : Promise.resolve<DeliveryResult>({ delivered: false, attempts: 0 });
   const crmPromise = crmWebhook
     ? deliverWebhook(crmWebhook, payload)
@@ -302,7 +310,8 @@ export async function POST(request: Request): Promise<Response> {
     attempts: delivery.attempts,
     trackingQueued,
     routingEnsured: routing.ok && routing.tagged === true,
-    webhookConfigured: Boolean(webhook),
+    webhookConfigured: Boolean(target),
+    destination: target?.destination ?? "none",
     crmConfigured: Boolean(crmWebhook),
     crmDelivered: crmDelivery.delivered,
     crmAttempts: crmDelivery.attempts,

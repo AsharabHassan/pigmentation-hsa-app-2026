@@ -3,7 +3,6 @@ import {
   CLINIC,
   getClinicLocation,
   isClinicLocationKey,
-  prefilledCalendarUrl,
 } from "@/lib/constants";
 import type { ClinicLocationKey } from "@/lib/types";
 
@@ -126,13 +125,9 @@ export async function POST(request: Request): Promise<Response> {
     : "london";
   const clinic = getClinicLocation(clinicLocation);
 
-  // Straight to the calendar with their details filled in — not a contact form.
-  const bookingLink = prefilledCalendarUrl(clinic.calendarUrl, {
-    firstName: first,
-    lastName: last,
-    email,
-    phone,
-  });
+  // Straight to the clinic's CRM booking page — not a contact form. The CRM
+  // page reads no contact details from the link, so nothing is prefilled.
+  const bookingLink = clinic.calendarUrl;
 
   const safeName = (first || "client").replace(/[^\w-]/g, "") || "client";
   const fileName = `Pigmentation-Analysis-Report-${safeName}.pdf`;
@@ -153,7 +148,7 @@ export async function POST(request: Request): Promise<Response> {
         <li>No obligation</li>
       </ul>
       <p><a href="${escapeHtml(bookingLink)}" style="display:inline-block;background:#b8902a;color:#ffffff;text-decoration:none;font-weight:bold;padding:13px 26px;border-radius:999px">Choose your consultation time</a></p>
-      <p style="font-size:13px;color:#5c5852">Your details are already filled in. Prefer to talk? Call us on ${clinic.phone}.</p>
+      <p style="font-size:13px;color:#5c5852">Prefer to talk? Call us on ${clinic.phone}.</p>
       <p style="color:#5c5852">— ${CLINIC.name}, ${clinic.city}</p>
     </div>`;
 

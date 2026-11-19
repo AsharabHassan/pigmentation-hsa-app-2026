@@ -6,6 +6,19 @@ import { z } from "zod";
 // clear message, rather than as a cryptic SDK error.
 // ─────────────────────────────────────────────────────────────────────────────
 
+function crmWebhookUrl(name: string) {
+  return z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
+    z
+      .string()
+      .trim()
+      .url(`${name} must be a valid URL`)
+      .refine((v) => v.startsWith("https://"), `${name} must use https`)
+      .optional(),
+  );
+}
+
 const serverSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
   ANTHROPIC_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
@@ -21,6 +34,11 @@ const serverSchema = z.object({
     .url("CRM_LEAD_WEBHOOK_URL must be a valid URL")
     .refine((v) => v.startsWith("https://"), "CRM_LEAD_WEBHOOK_URL must use https")
     .optional(),
+  // The clinic's own CRM inbound webhooks, one per clinic (GoHighLevel cutover,
+  // 20 Nov 2026). When the lead's clinic has one, the lead goes there instead of
+  // GHL_WEBHOOK_URL (lib/lead-webhook.ts). Blank means not set.
+  CRM_WEBHOOK_URL_LONDON: crmWebhookUrl("CRM_WEBHOOK_URL_LONDON"),
+  CRM_WEBHOOK_URL_GLASGOW: crmWebhookUrl("CRM_WEBHOOK_URL_GLASGOW"),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;

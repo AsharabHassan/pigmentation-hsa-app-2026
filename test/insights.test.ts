@@ -6,7 +6,7 @@ import {
   topZone,
   visitContextSchema,
 } from "@/lib/insights";
-import { prefilledCalendarUrl, toE164Uk } from "@/lib/constants";
+import { CALENDAR_URLS, CRM_BOOKING_URL, toE164Uk } from "@/lib/constants";
 
 describe("insights helpers", () => {
   it("matches the same UK phone whatever format GoHighLevel reports", () => {
@@ -58,20 +58,12 @@ describe("insights helpers", () => {
   });
 });
 
-describe("calendar prefill", () => {
-  it("fills the GoHighLevel calendar with the visitor's details", () => {
-    const url = new URL(
-      prefilledCalendarUrl("https://link.example.com/widget/bookings/c", {
-        firstName: "Aisha",
-        lastName: "O'Neil",
-        email: "aisha+test@example.com",
-        phone: "07700 900123",
-      }),
+describe("consultation booking page", () => {
+  it("sends both clinics to the CRM's free online consultation page", () => {
+    expect(CRM_BOOKING_URL).toBe(
+      "https://app.crm.strategyguys.agency/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-",
     );
-    expect(url.searchParams.get("first_name")).toBe("Aisha");
-    expect(url.searchParams.get("last_name")).toBe("O'Neil");
-    expect(url.searchParams.get("email")).toBe("aisha+test@example.com");
-    expect(url.searchParams.get("phone")).toBe("+447700900123");
+    expect(CALENDAR_URLS).toEqual({ london: CRM_BOOKING_URL, glasgow: CRM_BOOKING_URL });
   });
 
   it("normalises UK numbers and leaves international ones alone", () => {

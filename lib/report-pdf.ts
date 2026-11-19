@@ -594,7 +594,9 @@ export function buildReportPdf(input: ReportInput): Blob {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(...P.body);
-  doc.text(`${input.bookingUrl}   ·   ${input.phone}`, M + 7, y + 12.5);
+  // The booking address is ~100 characters: too long for this panel, so a
+  // short label is printed and the full address is the tap target below.
+  doc.text(`Tap here to choose your time online   ·   ${input.phone}`, M + 7, y + 12.5);
   // The whole panel is tappable — a printed URL nobody retypes books nobody.
   doc.link(M, y, CW, 17, { url: `https://${input.bookingUrl}` });
   y += 17;

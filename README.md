@@ -44,12 +44,13 @@ npm run dev                         # http://localhost:3000
 |---|---|---|
 | `ANTHROPIC_API_KEY` | server | Claude Vision analysis |
 | `ANTHROPIC_MODEL` | server (optional) | defaults to `claude-sonnet-4-6` |
-| `GHL_WEBHOOK_URL` | server | GoHighLevel inbound webhook (contact + result summary) |
+| `GHL_WEBHOOK_URL` | server | GoHighLevel inbound webhook (contact + result summary); used for a clinic with no CRM webhook set |
+| `CRM_WEBHOOK_URL_LONDON` / `CRM_WEBHOOK_URL_GLASGOW` | server (optional) | the clinic's own CRM inbound webhook. A lead whose `clinicLocation` is `london` / `glasgow` is posted here **instead of** `GHL_WEBHOOK_URL`, with the same JSON payload (meta fields included). Blank = unset; must be https |
+| `CRM_LEAD_WEBHOOK_URL` | server (optional) | older extra copy of every lead to the CRM (set in Vercel production before the cutover). Skipped when equal to the clinic's CRM webhook; otherwise sent as well — remove it after the cutover to avoid duplicate leads |
 | `GHL_API_TOKEN` / `GHL_LOCATION_ID` | server | GHL Private Integration — **required** for the automatic patient report email; unset means no report is delivered |
 | `GHL_REPORT_FIELD_KEY` | server (optional) | GHL custom field that receives the hosted report URL (defaults to `facial_app_report_pdf`) |
 | `NEXT_PUBLIC_BOOKING_URL` | public | London free online consultation link |
 | `NEXT_PUBLIC_GLASGOW_BOOKING_URL` | public | Glasgow free online consultation link |
-| `NEXT_PUBLIC_BOOKING_CALENDAR_URL` | public | GHL calendar embedded on the result page |
 | `DATABASE_URL` | server (optional) | Docker Postgres for booking insights |
 | `BOOKING_WEBHOOK_SECRET` | server (optional) | authenticates the GHL booking webhook |
 | `ADMIN_PASSWORD` | server (optional) | unlocks `/admin` (12+ characters) |
@@ -105,9 +106,17 @@ booking rate by verdict / score / main concern zone / campaign / creative /
 device / time of day, automatic "what stands out" takeaways once there is enough
 data, and the list of people with their booking status.
 
-The result page embeds the GHL calendar (`NEXT_PUBLIC_BOOKING_CALENDAR_URL`) with
-first name, last name, email and phone passed as `first_name`, `last_name`,
-`email`, `phone` query parameters.
+Consultations are booked on the clinic's CRM booking page
+(`CRM_BOOKING_URL` in `lib/constants.ts`, the same page for London and Glasgow:
+https://app.crm.strategyguys.agency/book/harley-street-aesthetic/free-online-consultation-with-aesthetic-).
+The CRM sends `X-Frame-Options: DENY` / `frame-ancestors 'none'`, so it cannot be
+embedded: the result page shows a booking card whose button opens it in a new tab,
+and the report email and PDF link to it. The page reads no contact details from
+query parameters, so nothing is prefilled. `NEXT_PUBLIC_BOOKING_CALENDAR_URL` and
+`NEXT_PUBLIC_GLASGOW_BOOKING_CALENDAR_URL` are no longer read.
+
+Note: the booking rows above come from the GoHighLevel booking workflow. After the
+cutover, CRM bookings only reach `/api/booking` if a CRM workflow posts them there.
 
 ## Tests & build
 ```bash
